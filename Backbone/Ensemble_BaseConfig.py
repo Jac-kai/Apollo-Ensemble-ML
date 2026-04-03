@@ -1,0 +1,1069 @@
+# -------------------- Import Modules --------------------
+from __future__ import annotations
+
+import os
+import re
+import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+
+import joblib
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.inspection import permutation_importance
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    StratifiedKFold,
+    train_test_split,
+)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import (
+    MinMaxScaler,
+    OneHotEncoder,
+    OrdinalEncoder,
+    RobustScaler,
+    StandardScaler,
+)
+
+project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+report_root = os.path.join(project_root, "ES_ML_Report")
+
+os.makedirs(report_root, exist_ok=True)
+
+
+# -------------------- Ensemble base model configure --------------------
+class EnsembleBaseModelConfig(ABC):
+    """
+    EnsembleBaseModelConfig
+    =======================
+
+    Abstract base class for sklearn-style ensemble model managers.
+
+    Intended Purpose
+    ----------------
+    This base class is designed for ensemble-learning projects such as:
+
+    - VotingClassifier / VotingRegressor
+    - BaggingClassifier / BaggingRegressor
+    - AdaBoostClassifier / AdaBoostRegressor
+    - StackingClassifier / StackingRegressor
+
+    It centralizes shared workflow components so each ensemble model module
+    does not need to repeatedly implement:
+
+    - cleaned X / Y storage
+    - train / test splitting
+    - optional preprocessing construction
+    - optional GridSearchCV
+    - feature-name extraction
+    - prediction / metadata buffers
+
+    Core Design Philosophy
+    ----------------------
+    Ensemble models often have two different preprocessing architectures:
+
+    1) Outer unified preprocessing
+       Example:
+           Pipeline([
+               ("preprocess", preprocessor),
+               ("classifier", VotingClassifier(...))
+           ])
+
+       In this case, preprocessing is applied once before the ensemble model.
+
+    2) Inner estimator-owned preprocessing
+       Example:
+           VotingClassifier(
+               estimators=[
+                   ("knn", knn_pipeline),
+                   ("svm", svm_pipeline),
+                   ("rf", rf_pipeline),
+               ]
+           )
+
+       In this case, each base estimator already owns its own pipeline, so the
+       outer layer should NOT build another preprocessing step.
+
+    This base class supports both approaches via `use_preprocess`.
+
+    Responsibilities
+    ----------------
+    - Store cleaned feature / target data.
+    - Normalize single-output vs multi-output targets.
+    - Perform train/test splitting with optional stratification.
+    - Build a numeric/categorical preprocessing ColumnTransformer when needed.
+    - Fit a full Pipeline with or without GridSearchCV.
+    - Support both single-output scoring strings and subclass-defined
+      multi-output scorers.
+    - Extract feature names after preprocessing when applicable.
+    - Provide helper validation for ensemble estimator lists.
+
+    Subclass Contract
+    -----------------
+    Subclasses must implement:
+
+    - task:
+        Return either "classification" or "regression".
+
+    - multioutput_scorer:
+        A scorer function used only when:
+        * GridSearchCV is enabled
+        * Y is multi-output
+
+    Notes
+    -----
+    - This class is intentionally ensemble-oriented, but can still fit any
+      sklearn-compatible estimator or pipeline.
+    - `step_name` is not abstract here. A default value is derived from `task`.
+      You may override it in subclasses if desired.
+    """
+
+    # -------------------- Initialization --------------------
+    def __init__(
+        self,
+        cleaned_X_data: pd.DataFrame,
+        cleaned_Y_data: Union[pd.Series, pd.DataFrame],
+    ):
+        """
+        Initialize the ensemble base manager.
+
+        Parameters
+        ----------
+        cleaned_X_data : pd.DataFrame
+            Cleaned input feature matrix.
+
+        cleaned_Y_data : Union[pd.Series, pd.DataFrame]
+            Cleaned target data.
+
+            Normalization policy:
+            - Series -> kept as Series (single-output)
+            - DataFrame with 1 column -> converted to Series (single-output)
+            - DataFrame with >= 2 columns -> kept as DataFrame (multi-output)
+
+        Raises
+        ------
+        TypeError
+            If cleaned_X_data is not a pandas DataFrame.
+        TypeError
+            If cleaned_Y_data is not a pandas Series or DataFrame.
+        ValueError
+            If cleaned_X_data is empty.
+        ValueError
+            If cleaned_Y_data is empty.
+
+        Side Effects
+        ------------
+        Initializes shared runtime state:
+        - split buffers
+        - prediction buffers
+        - fitted pipeline
+        - feature-name cache
+        - preprocessing column cache
+        - runtime metadata
+        """
+        if not isinstance(cleaned_X_data, pd.DataFrame):
+            raise TypeError("⚠️ cleaned_X_data must be a pandas DataFrame ‼️")
+
+        if cleaned_X_data.empty:
+            raise ValueError("⚠️ cleaned_X_data is empty ‼️")
+
+        if not isinstance(cleaned_Y_data, (pd.Series, pd.DataFrame)):
+            raise TypeError("⚠️ cleaned_Y_data must be a pandas Series or DataFrame ‼️")
+
+        if len(cleaned_Y_data) == 0:
+            raise ValueError("⚠️ cleaned_Y_data is empty ‼️")
+
+        self.cleaned_X_data = cleaned_X_data.copy()
+
+        # ---------- Normalize Y storage ----------
+        if isinstance(cleaned_Y_data, pd.DataFrame):
+            if cleaned_Y_data.shape[1] == 1:
+                self.cleaned_Y_data = cleaned_Y_data.iloc[:, 0].copy()
+            else:
+                self.cleaned_Y_data = cleaned_Y_data.copy()
+        else:
+            self.cleaned_Y_data = cleaned_Y_data.copy()
+
+        # ---------- Split train and test dataset ----------
+        self.X_train = None
+        self.X_test = None
+        self.Y_train = None
+        self.Y_test = None
+
+        # ---------- Predictions of  train and test dataset ----------
+        self.y_train_pred = None
+        self.y_test_pred = None
+        self.prediction_preview = None
+
+        # ---------- Trained objects and feature names ----------
+        self.model_pipeline = None
+        self.feature_names = None
+
+        # ---------- Numeric- and categorical-type columns ----------
+        self._numeric_cols = None
+        self._categorical_cols = None
+
+        # ---------- Record metadata ----------
+        self.input_model_type = None
+        self.input_use_cv = None
+        self.input_cv_folds = None
+        self.input_use_preprocess = None
+        self.input_scoring = None
+
+    # -------------------- Task setup (necessory for child class) --------------------
+    @property
+    @abstractmethod
+    def task(self) -> str:
+        """
+        Task type.
+
+        Returns
+        -------
+        str
+            Must be either:
+            - "classification"
+            - "regression"
+        """
+
+    # -------------------- Multiple output scoring method (necessory for child class) --------------------
+    @staticmethod
+    @abstractmethod
+    def multioutput_scorer(y_true, y_pred) -> float:
+        """
+        Multi-output scorer used in GridSearchCV.
+
+        Parameters
+        ----------
+        y_true : Any
+            True target values.
+        y_pred : Any
+            Predicted target values.
+
+        Returns
+        -------
+        float
+            Aggregated score across all outputs.
+        """
+
+    # -------------------- Step name setup --------------------
+    @property
+    def step_name(self) -> str:
+        """
+        Default final estimator step name for the outer Pipeline.
+
+        Returns
+        -------
+        str
+            - "classifier" if task == "classification"
+            - "regressor" if task == "regression"
+
+        Notes
+        -----
+        You may override this property in subclasses if a more specific step
+        name is needed.
+        """
+        if self.task == "classification":
+            return "classifier"
+        if self.task == "regression":
+            return "regressor"
+        raise ValueError("⚠️ task must be 'classification' or 'regression' ‼️")
+
+    # -------------------- Check Y is multiple output --------------------
+    def _is_multi_output(self, y: Union[pd.Series, pd.DataFrame]) -> bool:
+        """
+        Check whether target data is multi-output.
+
+        Parameters
+        ----------
+        y : Union[pd.Series, pd.DataFrame]
+            Target data to inspect.
+
+        Returns
+        -------
+        bool
+            True if y is a DataFrame with two or more columns, otherwise False.
+        """
+        return isinstance(y, pd.DataFrame) and y.shape[1] > 1
+
+    # -------------------- Check tasks setting --------------------
+    def _validate_task(self):
+        """
+        Validate task value.
+
+        Raises
+        ------
+        ValueError
+            If task is not 'classification' or 'regression'.
+        """
+        if self.task not in {"classification", "regression"}:
+            raise ValueError("⚠️ task must be 'classification' or 'regression' ‼️")
+
+    # -------------------- Check estimators setting --------------------
+    def _validate_estimators(
+        self,
+        estimators: Sequence[Tuple[str, Any]],
+        min_estimators: int = 1,
+    ) -> List[Tuple[str, Any]]:
+        """
+        Validate a sklearn-style estimator list.
+
+        Parameters
+        ----------
+        estimators : Sequence[Tuple[str, Any]]
+            Estimator list such as:
+            [
+                ("knn", knn_model),
+                ("svm", svm_model),
+            ]
+
+        min_estimators : int, default=1
+            Minimum number of estimators required.
+
+        Returns
+        -------
+        List[Tuple[str, Any]]
+            Validated estimator list.
+
+        Raises
+        ------
+        TypeError
+            If estimators is not a list/tuple-like collection.
+        ValueError
+            If estimator count is below min_estimators.
+        ValueError
+            If an estimator item is not a (name, estimator) pair.
+        ValueError
+            If estimator names are duplicated or invalid.
+        """
+        if not isinstance(estimators, (list, tuple)):
+            raise TypeError(
+                "⚠️ Estimators must be a list or tuple of (name, estimator) pairs ‼️"
+            )
+
+        if len(estimators) < min_estimators:
+            raise ValueError(
+                f"⚠️ At least {min_estimators} estimator(s) are required ‼️"
+            )
+
+        checked = []
+        names = []
+
+        for item in estimators:
+            if not isinstance(item, (list, tuple)) or len(item) != 2:
+                raise ValueError(
+                    "⚠️ Each estimator must be a (name, estimator) pair ‼️"
+                )
+
+            name, estimator = item
+
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("⚠️ Estimator name must be a non-empty string ‼️")
+
+            if estimator is None:
+                raise ValueError(f"⚠️ Estimator '{name}' is None ‼️")
+
+            checked.append((name.strip(), estimator))
+            names.append(name.strip())
+
+        if len(set(names)) != len(names):
+            raise ValueError("⚠️ Estimator names must be unique ‼️")
+
+        return checked
+
+    # -------------------- Build scalers --------------------
+    def _build_scaler(self, scaler_type: str = "standard"):
+        """
+        Build a scaler instance from a user-specified scaler type.
+
+        Parameters
+        ----------
+        scaler_type : str, default="standard"
+            Supported values:
+            - "standard", "std"
+            - "minmax", "min_max"
+            - "robust", "rbst"
+            - "none", "no", "off"
+
+        Returns
+        -------
+        Any or None
+            Scaler instance, or None when no scaling is requested.
+
+        Raises
+        ------
+        ValueError
+            If scaler_type is unsupported.
+        """
+        scaler_type = scaler_type.lower().strip()
+
+        if scaler_type in ["none", "no", "off"]:  # None Scaler
+            return None
+        if scaler_type in ["standard", "std"]:  # StandardScaler
+            return StandardScaler()
+        if scaler_type in ["minmax", "min_max"]:  # MinMaxScaler
+            return MinMaxScaler()
+        if scaler_type in ["robust", "rbst"]:  # RobustScaler
+            return RobustScaler()
+
+        raise ValueError(
+            "⚠️ scaler_type must be 'standard', 'minmax', 'robust', or 'none' ‼️"
+        )
+
+    # -------------------- Split train and test dataset --------------------
+    def train_test_split_engine(
+        self,
+        test_size: float = 0.2,
+        random_state: int = 42,
+        stratify: bool = True,
+    ):
+        """
+        Split cleaned X/Y into training and testing sets.
+
+        Parameters
+        ----------
+        test_size : float, default=0.2
+            Fraction used as test set.
+
+        random_state : int, default=42
+            Random seed.
+
+        stratify : bool, default=True
+            Whether to stratify labels.
+
+            Stratification is applied only when:
+            - task == "classification"
+            - target is single-output
+
+        Returns
+        -------
+        tuple
+            (X_train, X_test, Y_train, Y_test)
+
+        Notes
+        -----
+        - Multi-output targets do not use stratification.
+        """
+        self._validate_task()
+
+        y = self.cleaned_Y_data
+        use_stratify = None
+
+        # ---------- Classification with single Y ----------
+        # Classification with multiple Y don't not use stratify
+        if (
+            self.task == "classification"
+            and stratify
+            and (not self._is_multi_output(y))
+        ):
+            use_stratify = y
+
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(
+            self.cleaned_X_data,
+            self.cleaned_Y_data,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=use_stratify,
+        )
+
+        return self.X_train, self.X_test, self.Y_train, self.Y_test
+
+    # -------------------- Preprocesses --------------------
+    def build_preprocessor(
+        self,
+        categorical_cols: Optional[List[str]] = None,
+        numeric_cols: Optional[List[str]] = None,
+        cat_encoder: str = "ohe",
+    ) -> ColumnTransformer:
+        """
+        Build a preprocessing ColumnTransformer.
+
+        Parameters
+        ----------
+        categorical_cols : Optional[List[str]], default=None
+            Categorical columns. If None, inferred from:
+            object / category / bool dtypes.
+
+        numeric_cols : Optional[List[str]], default=None
+            Numeric columns. If None, inferred as all columns not included in
+            categorical_cols.
+
+        cat_encoder : str, default="ohe"
+            Categorical encoder type:
+            - "ohe", "onehot", "one_hot"
+            - "ordinal", "ord", "ord_label"
+
+        Returns
+        -------
+        ColumnTransformer
+            Configured preprocessing transformer.
+
+        Raises
+        ------
+        ValueError
+            If cat_encoder is invalid.
+
+        Side Effects
+        ------------
+        Stores:
+        - self._numeric_cols
+        - self._categorical_cols
+        """
+        df = self.cleaned_X_data
+
+        if categorical_cols is None:
+            categorical_cols = df.select_dtypes(
+                include=["object", "category", "bool"]
+            ).columns.tolist()
+
+        if numeric_cols is None:
+            numeric_cols = [col for col in df.columns if col not in categorical_cols]
+
+        self._numeric_cols = list(numeric_cols)
+        self._categorical_cols = list(categorical_cols)
+
+        numeric_transformer = Pipeline(
+            steps=[
+                ("imputer", SimpleImputer(strategy="median")),
+            ]
+        )
+
+        cat_encoder = cat_encoder.lower().strip()
+        if cat_encoder in ["ohe", "onehot", "one_hot"]:
+            categorical_transformer = Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    ("ohe", OneHotEncoder(handle_unknown="ignore")),
+                ]
+            )
+        elif cat_encoder in ["ordinal", "ord", "ord_label"]:
+            categorical_transformer = Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    (
+                        "ord",
+                        OrdinalEncoder(
+                            handle_unknown="use_encoded_value",
+                            unknown_value=-1,
+                        ),
+                    ),
+                ]
+            )
+        else:
+            raise ValueError("⚠️ cat_encoder must be 'ohe' or 'ordinal' ‼️")
+
+        return ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_cols),
+                ("cat", categorical_transformer, categorical_cols),
+            ],
+            remainder="drop",
+            verbose_feature_names_out=False,
+        )
+
+    # -------------------- CV setting --------------------
+    def _build_cv_and_scoring(
+        self,
+        cv_folds: int,
+        scoring: str,
+        random_state: int = 42,
+    ):
+        """
+        Build CV splitter and scoring strategy.
+
+        Parameters
+        ----------
+        cv_folds : int
+            Number of CV folds.
+        scoring : str
+            sklearn scoring string for single-output tasks.
+        random_state : int, default=42
+            Random seed for KFold / StratifiedKFold.
+
+        Returns
+        -------
+        tuple
+            (splitter, scoring_for_cv)
+        """
+        if self.task == "classification" and not self._is_multi_output(self.Y_train):
+            splitter = StratifiedKFold(
+                n_splits=cv_folds,
+                shuffle=True,
+                random_state=random_state,
+            )
+            scoring_for_cv = scoring
+        else:
+            splitter = KFold(
+                n_splits=cv_folds,
+                shuffle=True,
+                random_state=random_state,
+            )
+            scoring_for_cv = (
+                make_scorer(self.multioutput_scorer, greater_is_better=True)
+                if self._is_multi_output(self.Y_train)
+                else scoring
+            )
+
+        return splitter, scoring_for_cv
+
+    # -------------------- Fit model and CV --------------------
+    def fit_with_grid(
+        self,
+        base_model: Any,
+        param_grid: Optional[Dict[str, Any]],
+        use_cv: bool,
+        cv_folds: int,
+        scoring: str,
+        random_state: int = 42,
+        extra_steps: Optional[List[Tuple[str, Any]]] = None,
+        use_preprocess: bool = True,
+        categorical_cols: Optional[List[str]] = None,
+        numeric_cols: Optional[List[str]] = None,
+        cat_encoder: str = "ohe",
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[float]]:
+        """
+        Fit an outer Pipeline with optional preprocessing and optional GridSearchCV.
+
+        Parameters
+        ----------
+        base_model : Any
+            Final estimator placed at the end of the outer Pipeline.
+            This may be:
+            - a plain sklearn estimator
+            - an ensemble estimator
+            - a Pipeline-wrapped estimator
+            - a stacking / voting estimator
+
+        param_grid : Optional[Dict[str, Any]]
+            GridSearchCV parameter grid.
+
+            Examples
+            --------
+            Outer-pipeline ensemble params:
+            - {"classifier__n_estimators": [50, 100]}
+            - {"regressor__final_estimator__alpha": [0.1, 1.0]}
+
+        use_cv : bool
+            Whether to perform GridSearchCV.
+
+        cv_folds : int
+            Number of folds for cross-validation.
+
+        scoring : str
+            sklearn scoring string for single-output tasks.
+            Multi-output tasks use subclass-defined `multioutput_scorer`.
+
+        random_state : int, default=42
+            Seed used by CV splitters.
+
+        extra_steps : Optional[List[Tuple[str, Any]]], default=None
+            Optional steps inserted between preprocessing and the final estimator.
+
+            Example:
+            - [("scaler", StandardScaler())]
+            - [("pca", PCA(n_components=5))]
+
+        use_preprocess : bool, default=True
+            Whether the outer Pipeline should include a preprocessing step.
+
+            Use True when:
+            - raw tabular X is fed into the ensemble
+            - preprocessing should happen once globally outside the ensemble
+
+            Use False when:
+            - each inner estimator already owns its own preprocessing pipeline
+            - you do not want duplicated preprocessing
+
+        categorical_cols : Optional[List[str]], default=None
+            Passed to build_preprocessor() if use_preprocess=True.
+
+        numeric_cols : Optional[List[str]], default=None
+            Passed to build_preprocessor() if use_preprocess=True.
+
+        cat_encoder : str, default="ohe"
+            Passed to build_preprocessor() if use_preprocess=True.
+
+        Returns
+        -------
+        tuple
+            (best_params, best_score)
+
+            best_params : Optional[Dict[str, Any]]
+                Best parameter set from GridSearchCV.
+                None when use_cv=False.
+
+            best_score : Optional[float]
+                Best CV score from GridSearchCV.
+                None when use_cv=False.
+
+        Raises
+        ------
+        ValueError
+            If train_test_split_engine() has not been called first.
+
+        Side Effects
+        ------------
+        Sets:
+        - self.model_pipeline
+        - self.feature_names
+        - self.input_use_cv
+        - self.input_cv_folds
+        - self.input_use_preprocess
+        - self.input_scoring
+        """
+        if self.X_train is None or self.Y_train is None:
+            raise ValueError("⚠️ Run train_test_split_engine() before training ‼️")
+
+        self._validate_task()  # Check task
+
+        # ---------- Record metadata ----------
+        self.input_use_cv = use_cv
+        self.input_cv_folds = cv_folds
+        self.input_use_preprocess = use_preprocess
+        self.input_scoring = scoring
+
+        # ---------- Setup steps ----------
+        steps: List[Tuple[str, Any]] = []
+
+        # ---------- Setup preprocess ----------
+        if use_preprocess:
+            preprocess = self.build_preprocessor(
+                categorical_cols=categorical_cols,
+                numeric_cols=numeric_cols,
+                cat_encoder=cat_encoder,
+            )
+            steps.append(("preprocess", preprocess))
+
+        # ---------- Extra steps ----------
+        if extra_steps:
+            steps.extend(extra_steps)
+
+        # ---------- Setup pipeline and input steps ----------
+        steps.append((self.step_name, base_model))
+        pipe = Pipeline(steps=steps)
+
+        best_params = None
+        best_score = None
+
+        # ---------- CV application ----------
+        if use_cv:
+            splitter, scoring_for_cv = self._build_cv_and_scoring(
+                cv_folds=cv_folds,
+                scoring=scoring,
+                random_state=random_state,
+            )
+
+            gs = GridSearchCV(
+                estimator=pipe,
+                param_grid=param_grid or {},
+                scoring=scoring_for_cv,
+                cv=splitter,
+                n_jobs=-1,
+                refit=True,
+            )
+            gs.fit(self.X_train, self.Y_train)  # CV training
+
+            self.model_pipeline = gs.best_estimator_
+            best_params = gs.best_params_
+            best_score = gs.best_score_
+        else:
+            # ---------- Original model training ----------
+            pipe.fit(self.X_train, self.Y_train)
+            self.model_pipeline = pipe
+
+        self._extract_feature_names()
+        return best_params, best_score
+
+    # -------------------- Extract feature names --------------------
+    def _extract_feature_names(self):
+        """
+        Extract feature names after fitting.
+
+        Behavior
+        --------
+        Case 1: Outer pipeline contains "preprocess"
+            Try ColumnTransformer.get_feature_names_out() first.
+
+        Case 2: No outer preprocess exists
+            Use original cleaned_X_data column names.
+
+        Fallback logic
+        --------------
+        If transformed feature names cannot be extracted cleanly:
+        - use cached numeric columns
+        - expand OHE names when possible
+        - otherwise fall back to numeric + categorical column lists
+        """
+        if self.model_pipeline is None:
+            self.feature_names = None
+            return
+
+        # ---------- No outer preprocess ----------
+        pre = self.model_pipeline.named_steps.get("preprocess", None)
+        if pre is None:
+            self.feature_names = self.cleaned_X_data.columns.tolist()
+            return
+
+        # ---------- Extract feature names ----------
+        try:
+            if hasattr(pre, "get_feature_names_out"):
+                names = pre.get_feature_names_out()
+                if names is not None:
+                    names = list(names)
+
+                    # block generic names like x0, x1, ...
+                    if all(re.match(r"^[a-zA-Z]\d+$", str(name)) for name in names):
+                        raise ValueError("generic feature names")
+
+                    self.feature_names = names
+                    return
+            raise ValueError("no usable feature names")
+        except Exception:
+            # ---------- Backup methos-1 ----------
+            num_cols = getattr(self, "_numeric_cols", None)
+            cat_cols = getattr(self, "_categorical_cols", None)
+
+            if num_cols is None or cat_cols is None:
+                self.feature_names = self.cleaned_X_data.columns.tolist()
+                return
+
+            names_out = list(num_cols)
+            try:
+                cat_pipe = pre.named_transformers_.get("cat", None)
+
+                if (
+                    cat_pipe is not None
+                    and hasattr(cat_pipe, "named_steps")
+                    and ("ohe" in cat_pipe.named_steps)
+                ):
+                    ohe = cat_pipe.named_steps["ohe"]
+                    names_out.extend(ohe.get_feature_names_out(cat_cols).tolist())
+                else:
+                    names_out.extend(list(cat_cols))
+
+                self.feature_names = names_out
+
+            except Exception:
+                # ---------- Backup methos-2 ----------
+                self.feature_names = list(num_cols) + list(cat_cols)
+
+    # -------------------- Save fitted model --------------------
+    def save_model_joblib(
+        self,
+        folder_path: str | None = None,
+        file_name: str | None = None,
+    ):
+        """
+        Save the current fitted ensemble model object as a joblib file.
+
+        Parameters
+        ----------
+        folder_path : str or None, default=None
+            Folder path used to save the joblib file.
+
+            If None, the current working directory is used.
+
+        file_name : str or None, default=None
+            Custom file name for the saved model.
+
+            If None, an automatic file name is generated using the class name
+            and current timestamp.
+
+        Returns
+        -------
+        str or None
+            Full saved file path if successful, otherwise None.
+
+        Raises
+        ------
+        ValueError
+            If no fitted pipeline is available.
+
+        Notes
+        -----
+        This method saves the entire current object instead of saving only
+        ``self.model_pipeline`` so that runtime state is preserved, including:
+
+        - fitted pipeline
+        - feature names
+        - cleaned X / Y references
+        - train/test split buffers
+        - prediction buffers
+        """
+        if self.model_pipeline is None:
+            raise ValueError("⚠️ No fitted model pipeline available to save ‼️")
+
+        if folder_path is None:
+            folder_path = os.getcwd()
+
+        os.makedirs(folder_path, exist_ok=True)
+
+        if file_name is None:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            file_name = f"{self.__class__.__name__}_{timestamp}.joblib"
+
+        if not file_name.endswith(".joblib"):
+            file_name += ".joblib"
+
+        file_path = os.path.join(folder_path, file_name)
+        joblib.dump(self, file_path)
+
+        return file_path
+
+    # -------------------- Load fitted model --------------------
+    @classmethod
+    def load_model_joblib(cls, filepath: str):
+        """
+        Load a previously saved fitted ensemble model object from a joblib file.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to the saved joblib file.
+
+        Returns
+        -------
+        Any
+            Loaded model object.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the given file path does not exist.
+
+        TypeError
+            If the loaded object is not an instance of the expected class.
+        """
+        if not os.path.isfile(filepath):
+            raise FileNotFoundError(f"⚠️ File not found: {filepath} ‼️")
+
+        loaded_obj = joblib.load(filepath)
+
+        if not isinstance(loaded_obj, cls):
+            raise TypeError(
+                f"⚠️ Loaded object type mismatch: expected {cls.__name__}, "
+                f"got {type(loaded_obj).__name__} ‼️"
+            )
+
+        return loaded_obj
+
+    # -------------------- Permutation importance engine --------------------
+    def permutation_importance_engine(
+        self,
+        n_repeats: int = 10,
+        scoring: str | None = None,
+        max_display: int = 20,
+        save_fig: bool = False,
+        folder_name: str = "Permutation_Importance",
+        file_name: str | None = None,
+    ):
+        """
+        Compute and optionally plot permutation importance on the test set.
+
+        Parameters
+        ----------
+        n_repeats : int, default=10
+            Number of random shuffles used for each feature.
+
+        scoring : str or None, default=None
+            sklearn scoring string passed to permutation_importance().
+            If None, the method uses:
+            - "accuracy" for classification
+            - "r2" for regression
+
+        max_display : int, default=20
+            Maximum number of features displayed in the plot.
+
+        save_fig : bool, default=False
+            Whether to save the generated plot.
+
+        folder_name : str, default="Permutation_Importance"
+            Folder name used when saving the figure.
+
+        file_name : str or None, default=None
+            Optional custom figure file name.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame containing:
+            - feature
+            - importance_mean
+            - importance_std
+
+        Raises
+        ------
+        ValueError
+            If the model pipeline is not fitted.
+
+        ValueError
+            If X_test / Y_test is unavailable.
+        """
+        if self.model_pipeline is None:
+            raise ValueError("⚠️ Train the model before permutation importance ‼️")
+
+        if self.X_test is None or self.Y_test is None:
+            raise ValueError(
+                "⚠️ Test data is unavailable for permutation importance ‼️"
+            )
+
+        if scoring is None:
+            scoring = "accuracy" if self.task == "classification" else "r2"
+
+        result = permutation_importance(
+            estimator=self.model_pipeline,
+            X=self.X_test,
+            y=self.Y_test,
+            scoring=scoring,
+            n_repeats=n_repeats,
+            random_state=42,
+            n_jobs=-1,
+        )
+
+        feature_names = (
+            self.feature_names
+            if self.feature_names is not None
+            else self.cleaned_X_data.columns.tolist()
+        )
+
+        importance_df = pd.DataFrame(
+            {
+                "feature": feature_names,
+                "importance_mean": result.importances_mean,
+                "importance_std": result.importances_std,
+            }
+        ).sort_values("importance_mean", ascending=False)
+
+        display_df = importance_df.head(max_display).iloc[::-1]
+
+        plt.figure(figsize=(10, max(5, len(display_df) * 0.35)))
+        plt.barh(display_df["feature"], display_df["importance_mean"])
+        plt.xlabel("Permutation Importance")
+        plt.ylabel("Feature")
+        plt.title(f"{self.__class__.__name__} Permutation Importance")
+        plt.tight_layout()
+
+        if save_fig:
+            save_folder = os.path.join(report_root, folder_name)
+            os.makedirs(save_folder, exist_ok=True)
+
+            if file_name is None:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                file_name = (
+                    f"{self.__class__.__name__}_permutation_importance_{timestamp}.png"
+                )
+
+            save_path = os.path.join(save_folder, file_name)
+            plt.savefig(save_path, dpi=200, bbox_inches="tight")
+            print(f"🔥 Permutation importance figure saved: {save_path}")
+
+        plt.show()
+        return importance_df
+
+
+# =================================================

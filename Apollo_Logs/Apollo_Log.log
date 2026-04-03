@@ -1,0 +1,467 @@
+﻿2026-03-29 17:40:29 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-29 17:40:29 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-29 17:40:29 | INFO | Apollo | Starting Apollo main control loop
+2026-03-29 17:40:29 | INFO | Apollo | ApolloEngine initialized
+2026-03-29 17:40:29 | INFO | Apollo | ApolloEngine instance created
+2026-03-29 17:40:29 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 21:53:46 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-29 21:53:46 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-29 21:53:46 | INFO | Apollo | Starting Apollo main control loop
+2026-03-29 21:53:46 | INFO | Apollo | ApolloEngine initialized
+2026-03-29 21:53:46 | INFO | Apollo | ApolloEngine instance created
+2026-03-29 21:53:46 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 21:53:46 | INFO | Apollo | Main menu selection: 1
+2026-03-29 21:53:46 | INFO | Apollo | Dispatching main menu action: 1 - 📨 Upload Data
+2026-03-29 21:53:46 | INFO | Apollo | Entered menu: Loaded ML Data
+2026-03-29 21:53:46 | INFO | Apollo | Working-place folders loaded
+2026-03-29 21:53:48 | INFO | Apollo | Selected folder number: 7
+2026-03-29 21:53:48 | INFO | Apollo | Files loaded from folder number: 7
+2026-03-29 21:53:48 | INFO | Apollo | Selected file number: 14
+2026-03-29 21:53:48 | INFO | Apollo | Start loading dataset | folder_num=7 | file_num=14
+2026-03-29 21:53:48 | INFO | Apollo | Starting dataset search | folder_num=7 | file_num=14
+2026-03-29 21:53:48 | INFO | Apollo | Building Apollo cores
+2026-03-29 21:53:48 | INFO | Apollo | Apollo cores built successfully
+2026-03-29 21:53:48 | INFO | Apollo | Dataset loaded successfully
+2026-03-29 21:53:48 | INFO | Apollo | ML dataset loaded successfully | folder_num=7 | file_num=14
+2026-03-29 21:53:48 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 21:53:51 | INFO | Apollo | Main menu selection: 2
+2026-03-29 21:53:51 | INFO | Apollo | Dispatching main menu action: 2 - 🔎 Features and Targets
+2026-03-29 21:53:51 | INFO | Apollo | Entered menu: Select Feature
+2026-03-29 21:53:57 | INFO | Apollo | Selected target columns: ['Outcome']
+2026-03-29 21:54:00 | INFO | Apollo | Selected feature columns | target=['Outcome'] | features=['Glucose', 'Insulin']
+2026-03-29 21:54:00 | INFO | Apollo | Setting target column(s): Outcome
+2026-03-29 21:54:00 | INFO | Apollo | Target column(s) set successfully: Outcome
+2026-03-29 21:54:00 | INFO | Apollo | Setting feature columns: ['Glucose', 'Insulin']
+2026-03-29 21:54:00 | INFO | Apollo | Feature columns set successfully: ['Glucose', 'Insulin']
+2026-03-29 21:54:00 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 21:54:00 | INFO | Apollo | X/Y data built successfully
+2026-03-29 21:54:00 | INFO | Apollo | Feature and target selection completed successfully
+2026-03-29 21:54:01 | INFO | Apollo | Feature selection confirmed
+2026-03-29 21:54:01 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 21:54:03 | INFO | Apollo | Main menu selection: 3
+2026-03-29 21:54:03 | INFO | Apollo | Dispatching main menu action: 3 - 🧠 Models
+2026-03-29 21:54:03 | INFO | Apollo | Entered menu: Apollo Model Management Menu
+2026-03-29 21:54:06 | INFO | Apollo | Apollo Model Management Menu selection: 1 - 👁️ Training Classification Ensemble
+2026-03-29 21:54:06 | INFO | Apollo | Entered menu: Train Classifier Ensemble
+2026-03-29 21:54:06 | INFO | Apollo | Getting available models | task_type=classifier
+2026-03-29 21:54:08 | INFO | Apollo | Classifier ensemble selected: BaggingClassifier
+2026-03-29 21:54:18 | INFO | Apollo | Getting current feature count from ApolloEngine
+2026-03-29 21:54:18 | INFO | Apollo | Feature count resolved from feature_columns: 2
+2026-03-29 21:54:18 | INFO | Apollo | Current feature_count for classifier workflow: 2
+2026-03-29 21:54:58 | INFO | Apollo | Checking whether feature data contains categorical features
+2026-03-29 21:54:58 | INFO | Apollo | Categorical feature check completed | has_categorical=False | categorical_columns=[]
+2026-03-29 21:54:58 | INFO | Apollo | No categorical features detected; using default cat_encoder=ohe
+2026-03-29 21:54:58 | INFO | Apollo | Start classifier ensemble training | model=BaggingClassifier | common_params={'test_size': 0.2, 'split_random_state': 42, 'model_random_state': 42, 'use_cv': True, 'use_preprocess': True, 'cv_folds': 3, 'scoring': 'f1_weighted'} | train_kwargs={'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=2))], 'n_estimators': 10, 'max_samples': 1.0, 'max_features': 1.0, 'bootstrap': True, 'bootstrap_features': True, 'oob_score': True, 'warm_start': True, 'n_jobs': -1} | cat_encoder=ohe
+2026-03-29 21:54:58 | INFO | Apollo | Starting model training | model_name=BaggingClassifier | test_size=0.2 | split_random_state=42 | train_kwargs={'use_cv': True, 'cv_folds': 3, 'scoring': 'f1_weighted', 'cat_encoder': 'ohe', 'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=2))], 'n_estimators': 10, 'max_samples': 1.0, 'max_features': 1.0, 'bootstrap': True, 'bootstrap_features': True, 'oob_score': True, 'warm_start': True, 'n_jobs': -1}
+2026-03-29 21:54:58 | INFO | Apollo | Building model instance | model_name=BaggingClassifier
+2026-03-29 21:54:58 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 21:54:58 | INFO | Apollo | X/Y data built successfully
+2026-03-29 21:54:58 | INFO | Apollo | Built model instance: BaggingClassifier
+2026-03-29 21:54:58 | INFO | Apollo | Training model: BaggingClassifier
+2026-03-29 21:55:02 | ERROR | Apollo | Training failed with exception | model_name=BaggingClassifier
+Traceback (most recent call last):
+  File "C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_ML_Engine.py", line 571, in train_model
+    result = model.train(**train_kwargs)
+  File "C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Ensemble_Model\Bagging_Model.py", line 103, in train
+    fit_summary = self.bagging_fit_engine(
+        estimator=estimator,
+    ...<17 lines>...
+        cat_encoder=cat_encoder,
+    )
+  File "C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Ensemble_Missioner\Bagging_Missioner.py", line 356, in bagging_fit_engine
+    best_params, best_score = self.fit_with_grid(
+                              ~~~~~~~~~~~~~~~~~~^
+        base_model=bagging_model,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+        cat_encoder=cat_encoder,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Backbone\Ensemble_BaseConfig.py", line 769, in fit_with_grid
+    gs.fit(self.X_train, self.Y_train) # CV training
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\model_selection\_search.py", line 1053, in fit
+    self._run_search(evaluate_candidates)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\model_selection\_search.py", line 1612, in _run_search
+    evaluate_candidates(ParameterGrid(self.param_grid))
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\model_selection\_search.py", line 1030, in evaluate_candidates
+    _warn_or_raise_about_fit_failures(out, self.error_score)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\model_selection\_validation.py", line 479, in _warn_or_raise_about_fit_failures
+    raise ValueError(all_fits_failed_message)
+ValueError: 
+All the 48 fits failed.
+It is very likely that your model is misconfigured.
+You can try to debug the error by setting error_score='raise'.
+
+Below are more details about the failures:
+--------------------------------------------------------------------------------
+48 fits failed with the following error:
+Traceback (most recent call last):
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\model_selection\_validation.py", line 833, in _fit_and_score
+    estimator.fit(X_train, y_train, **fit_params)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\pipeline.py", line 621, in fit
+    self._final_estimator.fit(Xt, y, **last_step_params["fit"])
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\ensemble\_bagging.py", line 443, in fit
+    return self._fit(
+           ~~~~~~~~~^
+        X,
+        ^^
+    ...<3 lines>...
+        **fit_params,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\User\ProgramStudy\Zack_Python_Project\.venv_py314\Lib\site-packages\sklearn\ensemble\_bagging.py", line 559, in _fit
+    raise ValueError("Out of bag estimate only available if warm_start=False")
+ValueError: Out of bag estimate only available if warm_start=False
+
+2026-03-29 21:55:29 | INFO | Apollo | Apollo Model Management Menu selection: 3 - 🔥 Current Model Summary
+2026-03-29 21:55:29 | INFO | Apollo | Entered menu: Current Model Summary
+2026-03-29 21:55:29 | INFO | Apollo | Showing current model summary
+2026-03-29 21:55:29 | WARNING | Apollo | show_current_model_summary failed: current_model_result is None
+2026-03-29 21:55:29 | WARNING | Apollo | Current model summary display failed
+2026-03-29 22:00:20 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-29 22:00:20 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-29 22:00:20 | INFO | Apollo | Starting Apollo main control loop
+2026-03-29 22:00:20 | INFO | Apollo | ApolloEngine initialized
+2026-03-29 22:00:20 | INFO | Apollo | ApolloEngine instance created
+2026-03-29 22:00:20 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 22:00:22 | INFO | Apollo | Main menu selection: 1
+2026-03-29 22:00:22 | INFO | Apollo | Dispatching main menu action: 1 - 📨 Upload Data
+2026-03-29 22:00:22 | INFO | Apollo | Entered menu: Loaded ML Data
+2026-03-29 22:00:22 | INFO | Apollo | Working-place folders loaded
+2026-03-29 22:00:25 | INFO | Apollo | Selected folder number: 7
+2026-03-29 22:00:25 | INFO | Apollo | Files loaded from folder number: 7
+2026-03-29 22:00:27 | INFO | Apollo | Selected file number: 14
+2026-03-29 22:00:27 | INFO | Apollo | Start loading dataset | folder_num=7 | file_num=14
+2026-03-29 22:00:27 | INFO | Apollo | Starting dataset search | folder_num=7 | file_num=14
+2026-03-29 22:00:27 | INFO | Apollo | Building Apollo cores
+2026-03-29 22:00:27 | INFO | Apollo | Apollo cores built successfully
+2026-03-29 22:00:27 | INFO | Apollo | Dataset loaded successfully
+2026-03-29 22:00:27 | INFO | Apollo | ML dataset loaded successfully | folder_num=7 | file_num=14
+2026-03-29 22:00:27 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 22:00:28 | INFO | Apollo | Main menu selection: 2
+2026-03-29 22:00:28 | INFO | Apollo | Dispatching main menu action: 2 - 🔎 Features and Targets
+2026-03-29 22:00:28 | INFO | Apollo | Entered menu: Select Feature
+2026-03-29 22:00:29 | INFO | Apollo | Selected target columns: ['Outcome']
+2026-03-29 22:00:32 | INFO | Apollo | Selected feature columns | target=['Outcome'] | features=['Glucose', 'Insulin', 'BMI']
+2026-03-29 22:00:32 | INFO | Apollo | Setting target column(s): Outcome
+2026-03-29 22:00:32 | INFO | Apollo | Target column(s) set successfully: Outcome
+2026-03-29 22:00:32 | INFO | Apollo | Setting feature columns: ['Glucose', 'Insulin', 'BMI']
+2026-03-29 22:00:32 | INFO | Apollo | Feature columns set successfully: ['Glucose', 'Insulin', 'BMI']
+2026-03-29 22:00:32 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 22:00:32 | INFO | Apollo | X/Y data built successfully
+2026-03-29 22:00:32 | INFO | Apollo | Feature and target selection completed successfully
+2026-03-29 22:00:33 | INFO | Apollo | Feature selection confirmed
+2026-03-29 22:00:33 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 22:00:34 | INFO | Apollo | Main menu selection: 3
+2026-03-29 22:00:34 | INFO | Apollo | Dispatching main menu action: 3 - 🧠 Models
+2026-03-29 22:00:34 | INFO | Apollo | Entered menu: Apollo Model Management Menu
+2026-03-29 22:00:36 | INFO | Apollo | Apollo Model Management Menu selection: 1 - 👁️ Training Classification Ensemble
+2026-03-29 22:00:36 | INFO | Apollo | Entered menu: Train Classifier Ensemble
+2026-03-29 22:00:36 | INFO | Apollo | Getting available models | task_type=classifier
+2026-03-29 22:00:38 | INFO | Apollo | Classifier ensemble selected: BaggingClassifier
+2026-03-29 22:01:06 | INFO | Apollo | Getting current feature count from ApolloEngine
+2026-03-29 22:01:06 | INFO | Apollo | Feature count resolved from feature_columns: 3
+2026-03-29 22:01:06 | INFO | Apollo | Current feature_count for classifier workflow: 3
+2026-03-29 22:01:31 | INFO | Apollo | Checking whether feature data contains categorical features
+2026-03-29 22:01:31 | INFO | Apollo | Categorical feature check completed | has_categorical=False | categorical_columns=[]
+2026-03-29 22:01:31 | INFO | Apollo | No categorical features detected; using default cat_encoder=ohe
+2026-03-29 22:01:31 | INFO | Apollo | Start classifier ensemble training | model=BaggingClassifier | common_params={'test_size': 0.2, 'split_random_state': 42, 'model_random_state': 42, 'use_cv': True, 'use_preprocess': True, 'cv_folds': 3, 'scoring': 'f1_weighted'} | train_kwargs={'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': False, 'warm_start': False, 'n_jobs': -1} | cat_encoder=ohe
+2026-03-29 22:01:31 | INFO | Apollo | Starting model training | model_name=BaggingClassifier | test_size=0.2 | split_random_state=42 | train_kwargs={'use_cv': True, 'cv_folds': 3, 'scoring': 'f1_weighted', 'cat_encoder': 'ohe', 'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': False, 'warm_start': False, 'n_jobs': -1}
+2026-03-29 22:01:31 | INFO | Apollo | Building model instance | model_name=BaggingClassifier
+2026-03-29 22:01:31 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 22:01:31 | INFO | Apollo | X/Y data built successfully
+2026-03-29 22:01:31 | INFO | Apollo | Built model instance: BaggingClassifier
+2026-03-29 22:01:31 | INFO | Apollo | Training model: BaggingClassifier
+2026-03-29 22:01:37 | INFO | Apollo | Training completed: BaggingClassifier
+2026-03-29 22:01:37 | INFO | Apollo | Classifier ensemble training completed successfully: BaggingClassifier
+2026-03-29 23:15:17 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-29 23:15:17 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-29 23:15:17 | INFO | Apollo | Starting Apollo main control loop
+2026-03-29 23:15:17 | INFO | Apollo | ApolloEngine initialized
+2026-03-29 23:15:17 | INFO | Apollo | ApolloEngine instance created
+2026-03-29 23:15:17 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 23:15:17 | INFO | Apollo | Main menu selection: 1
+2026-03-29 23:15:17 | INFO | Apollo | Dispatching main menu action: 1 - 📨 Upload Data
+2026-03-29 23:15:17 | INFO | Apollo | Entered menu: Loaded ML Data
+2026-03-29 23:15:17 | INFO | Apollo | Working-place folders loaded
+2026-03-29 23:15:18 | INFO | Apollo | Selected folder number: 7
+2026-03-29 23:15:18 | INFO | Apollo | Files loaded from folder number: 7
+2026-03-29 23:15:19 | INFO | Apollo | Selected file number: 14
+2026-03-29 23:15:19 | INFO | Apollo | Start loading dataset | folder_num=7 | file_num=14
+2026-03-29 23:15:19 | INFO | Apollo | Starting dataset search | folder_num=7 | file_num=14
+2026-03-29 23:15:19 | INFO | Apollo | Building Apollo cores
+2026-03-29 23:15:19 | INFO | Apollo | Apollo cores built successfully
+2026-03-29 23:15:19 | INFO | Apollo | Dataset loaded successfully
+2026-03-29 23:15:19 | INFO | Apollo | ML dataset loaded successfully | folder_num=7 | file_num=14
+2026-03-29 23:15:19 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 23:15:20 | INFO | Apollo | Main menu selection: 2
+2026-03-29 23:15:20 | INFO | Apollo | Dispatching main menu action: 2 - 🔎 Features and Targets
+2026-03-29 23:15:20 | INFO | Apollo | Entered menu: Select Feature
+2026-03-29 23:15:21 | INFO | Apollo | Selected target columns: ['Outcome']
+2026-03-29 23:15:24 | INFO | Apollo | Selected feature columns | target=['Outcome'] | features=['Glucose', 'Insulin', 'BMI']
+2026-03-29 23:15:24 | INFO | Apollo | Setting target column(s): Outcome
+2026-03-29 23:15:24 | INFO | Apollo | Target column(s) set successfully: Outcome
+2026-03-29 23:15:24 | INFO | Apollo | Setting feature columns: ['Glucose', 'Insulin', 'BMI']
+2026-03-29 23:15:24 | INFO | Apollo | Feature columns set successfully: ['Glucose', 'Insulin', 'BMI']
+2026-03-29 23:15:24 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 23:15:24 | INFO | Apollo | X/Y data built successfully
+2026-03-29 23:15:24 | INFO | Apollo | Feature and target selection completed successfully
+2026-03-29 23:15:25 | INFO | Apollo | Feature selection confirmed
+2026-03-29 23:15:25 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 23:15:27 | INFO | Apollo | Main menu selection: 3
+2026-03-29 23:15:27 | INFO | Apollo | Dispatching main menu action: 3 - 🧠 Models
+2026-03-29 23:15:27 | INFO | Apollo | Entered menu: Apollo Model Management Menu
+2026-03-29 23:15:28 | INFO | Apollo | Apollo Model Management Menu selection: 1 - 👁️ Training Classification Ensemble
+2026-03-29 23:15:28 | INFO | Apollo | Entered menu: Train Classifier Ensemble
+2026-03-29 23:15:28 | INFO | Apollo | Getting available models | task_type=classifier
+2026-03-29 23:15:29 | INFO | Apollo | Classifier ensemble selected: BaggingClassifier
+2026-03-29 23:18:11 | INFO | Apollo | Getting current feature count from ApolloEngine
+2026-03-29 23:18:11 | INFO | Apollo | Feature count resolved from feature_columns: 3
+2026-03-29 23:18:11 | INFO | Apollo | Current feature_count for classifier workflow: 3
+2026-03-29 23:18:33 | INFO | Apollo | Checking whether feature data contains categorical features
+2026-03-29 23:18:33 | INFO | Apollo | Categorical feature check completed | has_categorical=False | categorical_columns=[]
+2026-03-29 23:18:33 | INFO | Apollo | No categorical features detected; using default cat_encoder=ohe
+2026-03-29 23:18:33 | INFO | Apollo | Start classifier ensemble training | model=BaggingClassifier | common_params={'test_size': 0.2, 'split_random_state': 42, 'model_random_state': 42, 'use_cv': False, 'use_preprocess': True, 'cv_folds': None, 'scoring': 'f1_weighted'} | train_kwargs={'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': None, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': False, 'n_jobs': -1} | cat_encoder=ohe
+2026-03-29 23:18:33 | INFO | Apollo | Starting model training | model_name=BaggingClassifier | test_size=0.2 | split_random_state=42 | train_kwargs={'use_cv': False, 'cv_folds': None, 'scoring': 'f1_weighted', 'cat_encoder': 'ohe', 'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': None, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': False, 'n_jobs': -1}
+2026-03-29 23:18:33 | INFO | Apollo | Building model instance | model_name=BaggingClassifier
+2026-03-29 23:18:33 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-29 23:18:33 | INFO | Apollo | X/Y data built successfully
+2026-03-29 23:18:33 | INFO | Apollo | Built model instance: BaggingClassifier
+2026-03-29 23:18:33 | INFO | Apollo | Training model: BaggingClassifier
+2026-03-29 23:18:37 | INFO | Apollo | Training completed: BaggingClassifier
+2026-03-29 23:18:37 | INFO | Apollo | Classifier ensemble training completed successfully: BaggingClassifier
+2026-03-29 23:18:42 | INFO | Apollo | Apollo Model Management Menu selection: 4 - 💾 Save Current Trained Model
+2026-03-29 23:18:42 | INFO | Apollo | Entered menu: Save Current Model
+2026-03-29 23:18:42 | INFO | Apollo | Start saving current model using model default MODEL_DIR
+2026-03-29 23:18:42 | INFO | Apollo | Saving current model | model_name=BaggingClassifier
+2026-03-29 23:18:42 | INFO | Apollo | Model saved successfully | model_name=BaggingClassifier | path=C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\ES_ML_Report\BaggingCla_Trained_Model\BaggingClassifier_Model_20260329_231842.joblib
+2026-03-29 23:18:42 | INFO | Apollo | Current model saved successfully: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\ES_ML_Report\BaggingCla_Trained_Model\BaggingClassifier_Model_20260329_231842.joblib
+2026-03-29 23:18:45 | INFO | Apollo | Exited Apollo Model Management Menu by cancel/back
+2026-03-29 23:18:45 | INFO | Apollo | Displaying Apollo main menu
+2026-03-29 23:18:46 | INFO | Apollo | Main menu selection: 4
+2026-03-29 23:18:46 | INFO | Apollo | Dispatching main menu action: 4 - 🪶 Evaluations
+2026-03-29 23:18:46 | INFO | Apollo | Entered menu: Apollo Evaluation Menu
+2026-03-29 23:18:47 | INFO | Apollo | Apollo Evaluation Menu selection: 1 - 📜 Show Evaluation Result
+2026-03-29 23:18:47 | INFO | Apollo | Entered menu: Show Evaluation Result
+2026-03-29 23:18:47 | INFO | Apollo | Evaluation result displayed successfully
+2026-03-29 23:18:49 | INFO | Apollo | Apollo Evaluation Menu selection: 2 - 🔮 Prediction Preview
+2026-03-29 23:18:49 | INFO | Apollo | Entered menu: Prediction Preview
+2026-03-29 23:18:50 | INFO | Apollo | Prediction preview displayed successfully | preview_size=5
+2026-03-29 23:19:51 | INFO | Apollo | Apollo Evaluation Menu selection: 3 - 🧪 Predict Probability
+2026-03-29 23:19:51 | INFO | Apollo | Entered menu: Predict Probability
+2026-03-29 23:19:51 | INFO | Apollo | Predict probability preview displayed successfully
+2026-03-29 23:19:54 | INFO | Apollo | Apollo Evaluation Menu selection: 4 - 📊 Permutation Importance
+2026-03-29 23:19:54 | INFO | Apollo | Entered menu: Permutation Importance
+2026-03-29 23:20:10 | INFO | Apollo | Permutation importance displayed successfully | save_fig=False
+2026-03-29 23:20:13 | INFO | Apollo | Apollo Evaluation Menu selection: 5 - 🌟 Feature Importance
+2026-03-29 23:20:13 | INFO | Apollo | Entered menu: Feature Importance
+2026-03-29 23:20:16 | WARNING | Apollo | Feature Importance failed: All arrays must be of the same length
+2026-03-29 23:20:27 | INFO | Apollo | Apollo Evaluation Menu selection: 6 - 🌳 Tree Plot
+2026-03-29 23:20:27 | INFO | Apollo | Entered menu: Tree Plot
+2026-03-29 23:20:41 | INFO | Apollo | Tree Plot generated successfully | tree_index=0 | max_depth=3 | save_fig=False
+2026-03-29 23:20:46 | INFO | Apollo | Apollo Evaluation Menu selection: 7 - 🧮 Confusion Matrix
+2026-03-29 23:20:46 | INFO | Apollo | Entered menu: Confusion Matrix
+2026-03-29 23:20:46 | INFO | Apollo | Selecting target column for multi-output workflow
+2026-03-29 23:20:46 | INFO | Apollo | Multi-output target selection skipped: Y_test is unavailable or has no columns
+2026-03-29 23:20:50 | INFO | Apollo | Confusion Matrix generated successfully | target_col=None | save_fig=False
+2026-03-30 19:32:42 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-30 19:32:42 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-30 19:32:42 | INFO | Apollo | Starting Apollo main control loop
+2026-03-30 19:32:42 | INFO | Apollo | ApolloEngine initialized
+2026-03-30 19:32:42 | INFO | Apollo | ApolloEngine instance created
+2026-03-30 19:32:42 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 19:32:47 | INFO | Apollo | Main menu selection: 1
+2026-03-30 19:32:47 | INFO | Apollo | Dispatching main menu action: 1 - 📨 Upload Data
+2026-03-30 19:32:47 | INFO | Apollo | Entered menu: Loaded ML Data
+2026-03-30 19:32:47 | INFO | Apollo | Working-place folders loaded
+2026-03-30 19:32:49 | INFO | Apollo | Selected folder number: 7
+2026-03-30 19:32:49 | INFO | Apollo | Files loaded from folder number: 7
+2026-03-30 19:32:50 | INFO | Apollo | Selected file number: 14
+2026-03-30 19:32:50 | INFO | Apollo | Start loading dataset | folder_num=7 | file_num=14
+2026-03-30 19:32:50 | INFO | Apollo | Starting dataset search | folder_num=7 | file_num=14
+2026-03-30 19:32:50 | INFO | Apollo | Building Apollo cores
+2026-03-30 19:32:50 | INFO | Apollo | Apollo cores built successfully
+2026-03-30 19:32:50 | INFO | Apollo | Dataset loaded successfully
+2026-03-30 19:32:50 | INFO | Apollo | ML dataset loaded successfully | folder_num=7 | file_num=14
+2026-03-30 19:32:50 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 19:32:51 | INFO | Apollo | Main menu selection: 2
+2026-03-30 19:32:51 | INFO | Apollo | Dispatching main menu action: 2 - 🔎 Features and Targets
+2026-03-30 19:32:51 | INFO | Apollo | Entered menu: Select Feature
+2026-03-30 19:32:53 | INFO | Apollo | Selected target columns: ['Outcome']
+2026-03-30 19:32:57 | INFO | Apollo | Selected feature columns | target=['Outcome'] | features=['Glucose', 'Insulin', 'BMI']
+2026-03-30 19:32:57 | INFO | Apollo | Setting target column(s): Outcome
+2026-03-30 19:32:57 | INFO | Apollo | Target column(s) set successfully: Outcome
+2026-03-30 19:32:57 | INFO | Apollo | Setting feature columns: ['Glucose', 'Insulin', 'BMI']
+2026-03-30 19:32:57 | INFO | Apollo | Feature columns set successfully: ['Glucose', 'Insulin', 'BMI']
+2026-03-30 19:32:57 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-30 19:32:57 | INFO | Apollo | X/Y data built successfully
+2026-03-30 19:32:57 | INFO | Apollo | Feature and target selection completed successfully
+2026-03-30 19:32:59 | INFO | Apollo | Feature selection confirmed
+2026-03-30 19:32:59 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 19:33:00 | INFO | Apollo | Main menu selection: 3
+2026-03-30 19:33:00 | INFO | Apollo | Dispatching main menu action: 3 - 🧠 Models
+2026-03-30 19:33:00 | INFO | Apollo | Entered menu: Apollo Model Management Menu
+2026-03-30 19:33:02 | INFO | Apollo | Apollo Model Management Menu selection: 1 - 👁️ Training Classification Ensemble
+2026-03-30 19:33:02 | INFO | Apollo | Entered menu: Train Classifier Ensemble
+2026-03-30 19:33:02 | INFO | Apollo | Getting available models | task_type=classifier
+2026-03-30 19:33:07 | INFO | Apollo | Classifier ensemble selected: GradientBoostingClassifier
+2026-03-30 19:33:19 | INFO | Apollo | Getting current feature count from ApolloEngine
+2026-03-30 19:33:19 | INFO | Apollo | Feature count resolved from feature_columns: 3
+2026-03-30 19:33:19 | INFO | Apollo | Current feature_count for classifier workflow: 3
+2026-03-30 19:33:55 | INFO | Apollo | Checking whether feature data contains categorical features
+2026-03-30 19:33:55 | INFO | Apollo | Categorical feature check completed | has_categorical=False | categorical_columns=[]
+2026-03-30 19:33:55 | INFO | Apollo | No categorical features detected; using default cat_encoder=ohe
+2026-03-30 19:33:55 | INFO | Apollo | Start classifier ensemble training | model=GradientBoostingClassifier | common_params={'test_size': 0.2, 'split_random_state': 42, 'model_random_state': 42, 'use_cv': True, 'use_preprocess': True, 'cv_folds': 3, 'scoring': 'f1_weighted'} | train_kwargs={'param_grid': {'classifier__n_estimators': [50, 100], 'classifier__learning_rate': [0.01, 0.1, 0.2], 'classifier__subsample': [0.8, 1.0], 'classifier__max_depth': [2, 3, 5], 'classifier__min_samples_split': [2, 5], 'classifier__min_samples_leaf': [1, 2]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 50, 'learning_rate': 0.1, 'subsample': 0.8, 'criterion': 'friedman_mse', 'min_samples_split': 2, 'min_samples_leaf': 2, 'max_depth': 3} | cat_encoder=ohe
+2026-03-30 19:33:55 | INFO | Apollo | Starting model training | model_name=GradientBoostingClassifier | test_size=0.2 | split_random_state=42 | train_kwargs={'use_cv': True, 'cv_folds': 3, 'scoring': 'f1_weighted', 'cat_encoder': 'ohe', 'param_grid': {'classifier__n_estimators': [50, 100], 'classifier__learning_rate': [0.01, 0.1, 0.2], 'classifier__subsample': [0.8, 1.0], 'classifier__max_depth': [2, 3, 5], 'classifier__min_samples_split': [2, 5], 'classifier__min_samples_leaf': [1, 2]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 50, 'learning_rate': 0.1, 'subsample': 0.8, 'criterion': 'friedman_mse', 'min_samples_split': 2, 'min_samples_leaf': 2, 'max_depth': 3}
+2026-03-30 19:33:55 | INFO | Apollo | Building model instance | model_name=GradientBoostingClassifier
+2026-03-30 19:33:55 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-30 19:33:55 | INFO | Apollo | X/Y data built successfully
+2026-03-30 19:33:55 | INFO | Apollo | Built model instance: GradientBoostingClassifier
+2026-03-30 19:33:55 | INFO | Apollo | Training model: GradientBoostingClassifier
+2026-03-30 19:34:10 | INFO | Apollo | Training completed: GradientBoostingClassifier
+2026-03-30 19:34:10 | INFO | Apollo | Classifier ensemble training completed successfully: GradientBoostingClassifier
+2026-03-30 19:34:24 | INFO | Apollo | Apollo Model Management Menu selection: 3 - 🔥 Current Model Summary
+2026-03-30 19:34:24 | INFO | Apollo | Entered menu: Current Model Summary
+2026-03-30 19:34:24 | INFO | Apollo | Showing current model summary
+2026-03-30 19:34:24 | INFO | Apollo | Current model summary displayed successfully
+2026-03-30 19:34:24 | INFO | Apollo | Current model summary displayed
+2026-03-30 19:34:27 | INFO | Apollo | Exited Apollo Model Management Menu by cancel/back
+2026-03-30 19:34:27 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 19:34:29 | INFO | Apollo | Main menu selection: 4
+2026-03-30 19:34:29 | INFO | Apollo | Dispatching main menu action: 4 - 🪶 Evaluations
+2026-03-30 19:34:29 | INFO | Apollo | Entered menu: Apollo Evaluation Menu
+2026-03-30 19:34:30 | INFO | Apollo | Apollo Evaluation Menu selection: 1 - 📜 Show Evaluation Result
+2026-03-30 19:34:30 | INFO | Apollo | Entered menu: Show Evaluation Result
+2026-03-30 19:34:30 | INFO | Apollo | Evaluation result displayed successfully
+2026-03-30 19:34:32 | INFO | Apollo | Apollo Evaluation Menu selection: 2 - 🧪 Predict Probability
+2026-03-30 19:34:32 | INFO | Apollo | Entered menu: Predict Probability
+2026-03-30 19:34:32 | INFO | Apollo | Predict probability preview displayed successfully
+2026-03-30 19:34:34 | INFO | Apollo | Apollo Evaluation Menu selection: 3 - 📊 Permutation Importance
+2026-03-30 19:34:34 | INFO | Apollo | Entered menu: Permutation Importance
+2026-03-30 19:34:41 | INFO | Apollo | Permutation importance displayed successfully | save_fig=False
+2026-03-30 19:34:44 | INFO | Apollo | Apollo Evaluation Menu selection: 4 - 🌟 Feature Importance
+2026-03-30 19:34:44 | INFO | Apollo | Entered menu: Feature Importance
+2026-03-30 19:34:49 | INFO | Apollo | Feature importance displayed successfully | save_fig=False
+2026-03-30 19:34:52 | INFO | Apollo | Apollo Evaluation Menu selection: 5 - 🌳 Tree Plot
+2026-03-30 19:34:52 | INFO | Apollo | Entered menu: Tree Plot
+2026-03-30 19:35:03 | INFO | Apollo | Tree Plot generated successfully | tree_index=3 | max_depth=3 | save_fig=False
+2026-03-30 19:35:08 | INFO | Apollo | Apollo Evaluation Menu selection: 6 - 🧮 Confusion Matrix
+2026-03-30 19:35:08 | INFO | Apollo | Entered menu: Confusion Matrix
+2026-03-30 19:35:08 | INFO | Apollo | Selecting target column for multi-output workflow
+2026-03-30 19:35:08 | INFO | Apollo | Multi-output target selection skipped: Y_test is unavailable or has no columns
+2026-03-30 19:35:11 | INFO | Apollo | Confusion Matrix generated successfully | target_col=None | save_fig=False
+2026-03-30 19:35:16 | INFO | Apollo | Exited Apollo Evaluation Menu by cancel/back
+2026-03-30 19:35:16 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 19:35:18 | INFO | Apollo | Main menu exited by user cancel/back
+2026-03-30 20:56:33 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-30 20:56:33 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-30 20:56:33 | INFO | Apollo | Starting Apollo main control loop
+2026-03-30 20:56:33 | INFO | Apollo | ApolloEngine initialized
+2026-03-30 20:56:33 | INFO | Apollo | ApolloEngine instance created
+2026-03-30 20:56:33 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 20:58:58 | INFO | Apollo | Logging initialized to: C:\Users\User\ProgramStudy\Zack_Python_Project\Apollo\Apollo_Logs\Apollo_Log.log
+2026-03-30 20:58:58 | INFO | Apollo | Apollo logging initialized from main entry
+2026-03-30 20:58:58 | INFO | Apollo | Starting Apollo main control loop
+2026-03-30 20:58:58 | INFO | Apollo | ApolloEngine initialized
+2026-03-30 20:58:58 | INFO | Apollo | ApolloEngine instance created
+2026-03-30 20:58:58 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 20:59:08 | INFO | Apollo | Main menu selection: 1
+2026-03-30 20:59:08 | INFO | Apollo | Dispatching main menu action: 1 - 📨 Upload Data
+2026-03-30 20:59:08 | INFO | Apollo | Entered menu: Loaded ML Data
+2026-03-30 20:59:08 | INFO | Apollo | Working-place folders loaded
+2026-03-30 20:59:09 | INFO | Apollo | Selected folder number: 7
+2026-03-30 20:59:09 | INFO | Apollo | Files loaded from folder number: 7
+2026-03-30 20:59:10 | INFO | Apollo | Selected file number: 14
+2026-03-30 20:59:10 | INFO | Apollo | Start loading dataset | folder_num=7 | file_num=14
+2026-03-30 20:59:10 | INFO | Apollo | Starting dataset search | folder_num=7 | file_num=14
+2026-03-30 20:59:10 | INFO | Apollo | Building Apollo cores
+2026-03-30 20:59:10 | INFO | Apollo | Apollo cores built successfully
+2026-03-30 20:59:10 | INFO | Apollo | Dataset loaded successfully
+2026-03-30 20:59:10 | INFO | Apollo | ML dataset loaded successfully | folder_num=7 | file_num=14
+2026-03-30 20:59:10 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 20:59:11 | INFO | Apollo | Main menu selection: 2
+2026-03-30 20:59:11 | INFO | Apollo | Dispatching main menu action: 2 - 🔎 Features and Targets
+2026-03-30 20:59:11 | INFO | Apollo | Entered menu: Select Feature
+2026-03-30 20:59:12 | INFO | Apollo | Selected target columns: ['Outcome']
+2026-03-30 20:59:14 | INFO | Apollo | Selected feature columns | target=['Outcome'] | features=['Glucose', 'Insulin', 'BMI']
+2026-03-30 20:59:14 | INFO | Apollo | Setting target column(s): Outcome
+2026-03-30 20:59:14 | INFO | Apollo | Target column(s) set successfully: Outcome
+2026-03-30 20:59:14 | INFO | Apollo | Setting feature columns: ['Glucose', 'Insulin', 'BMI']
+2026-03-30 20:59:14 | INFO | Apollo | Feature columns set successfully: ['Glucose', 'Insulin', 'BMI']
+2026-03-30 20:59:14 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-30 20:59:14 | INFO | Apollo | X/Y data built successfully
+2026-03-30 20:59:14 | INFO | Apollo | Feature and target selection completed successfully
+2026-03-30 20:59:15 | INFO | Apollo | Feature selection confirmed
+2026-03-30 20:59:15 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 20:59:17 | INFO | Apollo | Main menu selection: 3
+2026-03-30 20:59:17 | INFO | Apollo | Dispatching main menu action: 3 - 🧠 Models
+2026-03-30 20:59:17 | INFO | Apollo | Entered menu: Apollo Model Management Menu
+2026-03-30 20:59:18 | INFO | Apollo | Apollo Model Management Menu selection: 1 - 👁️ Training Classification Ensemble
+2026-03-30 20:59:18 | INFO | Apollo | Entered menu: Train Classifier Ensemble
+2026-03-30 20:59:18 | INFO | Apollo | Getting available models | task_type=classifier
+2026-03-30 20:59:23 | INFO | Apollo | Classifier ensemble selected: BaggingClassifier
+2026-03-30 20:59:35 | INFO | Apollo | Getting current feature count from ApolloEngine
+2026-03-30 20:59:35 | INFO | Apollo | Feature count resolved from feature_columns: 3
+2026-03-30 20:59:35 | INFO | Apollo | Current feature_count for classifier workflow: 3
+2026-03-30 21:00:02 | INFO | Apollo | Checking whether feature data contains categorical features
+2026-03-30 21:00:02 | INFO | Apollo | Categorical feature check completed | has_categorical=False | categorical_columns=[]
+2026-03-30 21:00:02 | INFO | Apollo | No categorical features detected; using default cat_encoder=ohe
+2026-03-30 21:00:02 | INFO | Apollo | Start classifier ensemble training | model=BaggingClassifier | common_params={'test_size': 0.2, 'split_random_state': 42, 'model_random_state': 42, 'use_cv': True, 'use_preprocess': True, 'cv_folds': 3, 'scoring': 'f1_weighted'} | train_kwargs={'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': True, 'n_jobs': -1} | cat_encoder=ohe
+2026-03-30 21:00:02 | INFO | Apollo | Starting model training | model_name=BaggingClassifier | test_size=0.2 | split_random_state=42 | train_kwargs={'use_cv': True, 'cv_folds': 3, 'scoring': 'f1_weighted', 'cat_encoder': 'ohe', 'estimator': DecisionTreeClassifier(random_state=42), 'param_grid': {'classifier__n_estimators': [10, 30, 50, 100], 'classifier__max_samples': [0.7, 1.0], 'classifier__max_features': [0.7, 1.0], 'classifier__bootstrap': [True], 'classifier__bootstrap_features': [False]}, 'random_state': 42, 'use_preprocess': True, 'extra_steps': [('pca', PCA(n_components=3))], 'n_estimators': 10, 'max_samples': 0.7, 'max_features': 0.7, 'bootstrap': True, 'bootstrap_features': False, 'oob_score': True, 'n_jobs': -1}
+2026-03-30 21:00:02 | INFO | Apollo | Building model instance | model_name=BaggingClassifier
+2026-03-30 21:00:02 | INFO | Apollo | Building X/Y data from FeatureCore
+2026-03-30 21:00:02 | INFO | Apollo | X/Y data built successfully
+2026-03-30 21:00:02 | INFO | Apollo | Built model instance: BaggingClassifier
+2026-03-30 21:00:02 | INFO | Apollo | Training model: BaggingClassifier
+2026-03-30 21:00:11 | INFO | Apollo | Training completed: BaggingClassifier
+2026-03-30 21:00:11 | INFO | Apollo | Classifier ensemble training completed successfully: BaggingClassifier
+2026-03-30 21:00:18 | INFO | Apollo | Apollo Model Management Menu selection: 3 - 🔥 Current Model Summary
+2026-03-30 21:00:18 | INFO | Apollo | Entered menu: Current Model Summary
+2026-03-30 21:00:18 | INFO | Apollo | Showing current model summary
+2026-03-30 21:00:18 | INFO | Apollo | Current model summary displayed successfully
+2026-03-30 21:00:18 | INFO | Apollo | Current model summary displayed
+2026-03-30 21:00:20 | INFO | Apollo | Exited Apollo Model Management Menu by cancel/back
+2026-03-30 21:00:20 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 21:00:22 | INFO | Apollo | Main menu selection: 4
+2026-03-30 21:00:22 | INFO | Apollo | Dispatching main menu action: 4 - 🪶 Evaluations
+2026-03-30 21:00:22 | INFO | Apollo | Entered menu: Apollo Evaluation Menu
+2026-03-30 21:00:23 | INFO | Apollo | Apollo Evaluation Menu selection: 1 - 📜 Show Evaluation Result
+2026-03-30 21:00:23 | INFO | Apollo | Entered menu: Show Evaluation Result
+2026-03-30 21:00:23 | INFO | Apollo | Evaluation result displayed successfully
+2026-03-30 21:00:24 | INFO | Apollo | Apollo Evaluation Menu selection: 2 - 🧪 Predict Probability
+2026-03-30 21:00:24 | INFO | Apollo | Entered menu: Predict Probability
+2026-03-30 21:00:24 | INFO | Apollo | Predict probability preview displayed successfully
+2026-03-30 21:00:28 | INFO | Apollo | Apollo Evaluation Menu selection: 3 - 📊 Permutation Importance
+2026-03-30 21:00:28 | INFO | Apollo | Entered menu: Permutation Importance
+2026-03-30 21:00:32 | INFO | Apollo | Permutation importance displayed successfully | save_fig=False
+2026-03-30 21:00:36 | INFO | Apollo | Apollo Evaluation Menu selection: 4 - 🌟 Feature Importance
+2026-03-30 21:00:36 | INFO | Apollo | Entered menu: Feature Importance
+2026-03-30 21:00:39 | INFO | Apollo | Feature importance displayed successfully | save_fig=False
+2026-03-30 21:00:41 | INFO | Apollo | Apollo Evaluation Menu selection: 5 - 🌳 Tree Plot
+2026-03-30 21:00:41 | INFO | Apollo | Entered menu: Tree Plot
+2026-03-30 21:01:04 | INFO | Apollo | Tree Plot generated successfully | tree_indices=[1, 2, 3] | max_depth=3 | save_fig=False
+2026-03-30 21:01:09 | INFO | Apollo | Apollo Evaluation Menu selection: 5 - 🌳 Tree Plot
+2026-03-30 21:01:09 | INFO | Apollo | Entered menu: Tree Plot
+2026-03-30 21:01:23 | INFO | Apollo | Tree Plot generated successfully | tree_indices=[1, 2] | max_depth=3 | save_fig=True
+2026-03-30 21:01:42 | INFO | Apollo | Apollo Evaluation Menu selection: 6 - 🧮 Confusion Matrix
+2026-03-30 21:01:42 | INFO | Apollo | Entered menu: Confusion Matrix
+2026-03-30 21:01:42 | INFO | Apollo | Selecting target column for multi-output workflow
+2026-03-30 21:01:42 | INFO | Apollo | Multi-output target selection skipped: Y_test is unavailable or has no columns
+2026-03-30 21:01:48 | INFO | Apollo | Confusion Matrix generated successfully | target_col=None | save_fig=True
+2026-03-30 21:02:13 | INFO | Apollo | Exited Apollo Evaluation Menu by cancel/back
+2026-03-30 21:02:13 | INFO | Apollo | Displaying Apollo main menu
+2026-03-30 21:02:14 | INFO | Apollo | Main menu exited by user cancel/back
