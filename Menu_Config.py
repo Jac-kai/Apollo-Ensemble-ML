@@ -121,6 +121,30 @@ PCA_PARAM_CONFIG = {
     },
 }
 
+# -------------------- Permutation importance options --------------------
+PERMUTATION_IMPORTANCE_CONFIG = {
+    "n_repeats": {
+        "label": "🔁 Permutation Repeats",
+        "options": {
+            1: 5,
+            2: 10,
+            3: 20,
+            4: 30,
+        },
+        "default": 2,
+    },
+    "max_display": {
+        "label": "📊 Max Display Features",
+        "options": {
+            1: 10,
+            2: 20,
+            3: 30,
+            4: 50,
+        },
+        "default": 2,
+    },
+}
+
 # -------------------- Ensemble parameter options --------------------
 ENSEMBLE_PARAM_CONFIG = {
     # ---------- Voting classification parameter options ----------

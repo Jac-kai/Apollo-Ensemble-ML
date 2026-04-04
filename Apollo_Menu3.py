@@ -9,6 +9,11 @@ from Apollo.Menu_Helper_Decorator import (
     input_yesno,
     menu_wrapper,
 )
+from Apollo.Menu_Config import (
+    PERMUTATION_IMPORTANCE_CONFIG,
+    SCORING_CONFIG,
+)
+from Apollo.Apollo_Model_Menu_Helper import select_from_options
 
 logger = logging.getLogger("Apollo")
 
@@ -405,12 +410,24 @@ def predict_probability_menu(apollo: ApolloEngine):
 @menu_wrapper("Permutation Importance")
 def permutation_importance_menu(apollo: ApolloEngine):
     """
-    Run and display permutation importance for the current model.
+    Run and display permutation importance for the current Apollo model.
 
     This menu validates that a current model exists and supports the
-    ``permutation_importance_engine(...)`` workflow. It asks the user whether
-    the generated figure should be saved, then runs the permutation-importance
-    workflow and displays the result.
+    ``permutation_importance_engine(...)`` workflow. It then interactively
+    collects permutation-importance options from the user, including:
+
+    1. the number of permutation repeats,
+    2. the maximum number of displayed features,
+    3. the scoring metric used to measure performance drop,
+    4. whether the generated figure should be saved.
+
+    The scoring menu is selected dynamically according to the current model task:
+
+    - ``"classification"`` -> classifier scoring menu
+    - ``"regression"`` -> regressor scoring menu
+
+    After collecting the required options, the menu runs the underlying
+    permutation-importance workflow and displays the returned result.
 
     Parameters
     ----------
@@ -423,8 +440,29 @@ def permutation_importance_menu(apollo: ApolloEngine):
 
     Notes
     -----
-    If the underlying result object supports ``head(...)``, the menu displays
+    - This menu requires that ``apollo.current_model`` already exists.
+    - The current model must expose a ``permutation_importance_engine(...)``
+    method.
+    - The scoring-menu type is resolved from ``apollo.current_model.task``.
+    - If the task type is unsupported, the menu prints a warning and exits.
+    - If the user cancels any required option-selection step, the menu exits
+    without running permutation importance.
+    - If the returned result object supports ``head(...)``, the menu displays
     the top portion of the result for readability.
+    - If permutation importance fails inside the model layer, the raised
+    exception is caught, a warning is printed, and the menu returns normally.
+
+    Examples
+    --------
+    Example user inputs during the menu flow::
+
+        repeats      -> 2   # option mapped to 10
+        max display  -> 2   # option mapped to 20
+        scoring      -> 3   # e.g. "f1_weighted" or task-specific option
+        save plot    -> n
+
+    This runs permutation importance using the selected repeat count,
+    display limit, scoring metric, and save option.
     """
     logger.info("Entered menu: Permutation Importance")
 
@@ -438,21 +476,77 @@ def permutation_importance_menu(apollo: ApolloEngine):
         print("⚠️ Permutation importance is not supported by the current model ‼️")
         return
 
+    # ---------- Resolve task type for scoring menu ----------
+    task_type = getattr(apollo.current_model, "task", None)
+    if task_type == "classification":
+        scoring_task_type = "classifier"
+    elif task_type == "regression":
+        scoring_task_type = "regressor"
+    else:
+        logger.warning("Permutation Importance failed: unknown task type %s", task_type)
+        print("⚠️ Unknown model task type for permutation importance scoring ‼️")
+        return
+
+    # ---------- Select n_repeats ----------
+    repeats_config = PERMUTATION_IMPORTANCE_CONFIG["n_repeats"]
+    n_repeats = select_from_options(
+        label=repeats_config["label"],
+        options=repeats_config["options"],
+        default=repeats_config["default"],
+    )
+    if n_repeats is None:
+        logger.info("Permutation Importance cancelled at n_repeats selection")
+        return
+
+    # ---------- Select max_display ----------
+    display_config = PERMUTATION_IMPORTANCE_CONFIG["max_display"]
+    max_display = select_from_options(
+        label=display_config["label"],
+        options=display_config["options"],
+        default=display_config["default"],
+    )
+    if max_display is None:
+        logger.info("Permutation Importance cancelled at max_display selection")
+        return
+
+    # ---------- Select scoring ----------
+    scoring_config = SCORING_CONFIG[scoring_task_type]
+    scoring = select_from_options(
+        label=scoring_config["label"],
+        options=scoring_config["options"],
+        default=scoring_config["default"],
+    )
+    if scoring is None:
+        logger.info("Permutation Importance cancelled at scoring selection")
+        return
+
+    # ---------- Save figure ----------
     save_fig = input_yesno("💾 Save plot", default=False)
     if save_fig is None:
         logger.info("Permutation Importance cancelled at save option")
         return
 
     try:
-        result = apollo.current_model.permutation_importance_engine(save_fig=save_fig)
+        result = apollo.current_model.permutation_importance_engine(
+            n_repeats=n_repeats,
+            scoring=scoring,
+            max_display=max_display,
+            save_fig=save_fig,
+        )
     except Exception as e:
         logger.warning("Permutation Importance failed: %s", e)
         print(f"⚠️ Permutation importance failed: {e}")
         return
 
     print("\n---------- 🔥 Permutation Importance Result 🔥 ----------")
-    pprint(result.head(10) if hasattr(result, "head") else result)
-    logger.info("Permutation importance displayed successfully | save_fig=%s", save_fig)
+    pprint(result.head(max_display) if hasattr(result, "head") else result)
+    logger.info(
+        "Permutation importance displayed successfully | n_repeats=%s | max_display=%s | scoring=%s | save_fig=%s",
+        n_repeats,
+        max_display,
+        scoring,
+        save_fig,
+    )
     print("-" * 100)
 
 
