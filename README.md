@@ -148,6 +148,10 @@ Apollo is structured around reusable components, including:
 - menu layer
 - estimator and param-grid helpers
 
+### 10. Cross-Validation Result Tracking
+Apollo records cross-validation settings and best-search results during GridSearchCV workflows.  
+It can store compact CV summaries, keep raw CV search results in memory, and export top-ranked CV results as CSV reports for later inspection.
+
 This architecture makes the project easier to extend, maintain, and reuse across future ML systems.
 
 ---
