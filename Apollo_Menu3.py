@@ -3,17 +3,14 @@ import logging
 from pprint import pprint
 
 from Apollo.Apollo_ML_Engine import ApolloEngine
+from Apollo.Apollo_Model_Menu_Helper import select_from_options
+from Apollo.Menu_Config import PERMUTATION_IMPORTANCE_CONFIG, SCORING_CONFIG
 from Apollo.Menu_Helper_Decorator import (
     input_int,
     input_list,
     input_yesno,
     menu_wrapper,
 )
-from Apollo.Menu_Config import (
-    PERMUTATION_IMPORTANCE_CONFIG,
-    SCORING_CONFIG,
-)
-from Apollo.Apollo_Model_Menu_Helper import select_from_options
 
 logger = logging.getLogger("Apollo")
 
