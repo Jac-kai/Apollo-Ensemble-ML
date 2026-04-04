@@ -160,12 +160,25 @@ class EnsembleBaseModelConfig(ABC):
         Side Effects
         ------------
         Initializes shared runtime state:
-        - split buffers
-        - prediction buffers
-        - fitted pipeline
-        - feature-name cache
-        - preprocessing column cache
-        - runtime metadata
+
+        - split buffers:
+        ``X_train``, ``X_test``, ``Y_train``, ``Y_test``
+
+        - prediction buffers:
+        ``y_train_pred``, ``y_test_pred``, ``prediction_preview``
+
+        - fitted pipeline and feature-name cache:
+        ``model_pipeline``, ``feature_names``
+
+        - preprocessing column cache:
+        ``_numeric_cols``, ``_categorical_cols``
+
+        - runtime metadata:
+        ``input_model_type``, ``input_use_cv``, ``input_cv_folds``,
+        ``input_use_preprocess``, ``input_scoring``
+
+        - CV result buffers:
+        ``cv_search_report``, ``cv_results_raw``
         """
         if not isinstance(cleaned_X_data, pd.DataFrame):
             raise TypeError("⚠️ cleaned_X_data must be a pandas DataFrame ‼️")
@@ -215,6 +228,10 @@ class EnsembleBaseModelConfig(ABC):
         self.input_cv_folds = None
         self.input_use_preprocess = None
         self.input_scoring = None
+
+        # ---------- Record CV report ----------
+        self.cv_search_report = None
+        self.cv_results_raw = None
 
     # -------------------- Task setup (necessory for child class) --------------------
     @property
@@ -629,6 +646,24 @@ class EnsembleBaseModelConfig(ABC):
         """
         Fit an outer Pipeline with optional preprocessing and optional GridSearchCV.
 
+        This method builds a full sklearn outer pipeline for the current ensemble
+        workflow and fits it on the training split. The pipeline can include:
+
+        1. an optional outer preprocessing step,
+        2. optional extra intermediate steps such as PCA or scaling,
+        3. the final estimator step defined by ``self.step_name``.
+
+        When cross-validation is enabled, the method runs ``GridSearchCV`` on the
+        outer pipeline, stores the best fitted estimator pipeline, and records both:
+
+        - a compact CV summary report in ``self.cv_search_report``
+        - the full raw ``GridSearchCV.cv_results_`` dictionary in
+        ``self.cv_results_raw``
+
+        When cross-validation is disabled, the method fits the outer pipeline
+        directly and clears previously stored CV result buffers so the object state
+        remains consistent with the current training run.
+
         Parameters
         ----------
         base_model : Any
@@ -645,8 +680,8 @@ class EnsembleBaseModelConfig(ABC):
             Examples
             --------
             Outer-pipeline ensemble params:
-            - {"classifier__n_estimators": [50, 100]}
-            - {"regressor__final_estimator__alpha": [0.1, 1.0]}
+            - ``{"classifier__n_estimators": [50, 100]}``
+            - ``{"regressor__final_estimator__alpha": [0.1, 1.0]}``
 
         use_cv : bool
             Whether to perform GridSearchCV.
@@ -656,7 +691,7 @@ class EnsembleBaseModelConfig(ABC):
 
         scoring : str
             sklearn scoring string for single-output tasks.
-            Multi-output tasks use subclass-defined `multioutput_scorer`.
+            Multi-output tasks use subclass-defined ``multioutput_scorer``.
 
         random_state : int, default=42
             Seed used by CV splitters.
@@ -665,8 +700,8 @@ class EnsembleBaseModelConfig(ABC):
             Optional steps inserted between preprocessing and the final estimator.
 
             Example:
-            - [("scaler", StandardScaler())]
-            - [("pca", PCA(n_components=5))]
+            - ``[("scaler", StandardScaler())]``
+            - ``[("pca", PCA(n_components=5))]``
 
         use_preprocess : bool, default=True
             Whether the outer Pipeline should include a preprocessing step.
@@ -680,41 +715,87 @@ class EnsembleBaseModelConfig(ABC):
             - you do not want duplicated preprocessing
 
         categorical_cols : Optional[List[str]], default=None
-            Passed to build_preprocessor() if use_preprocess=True.
+            Passed to ``build_preprocessor()`` if ``use_preprocess=True``.
 
         numeric_cols : Optional[List[str]], default=None
-            Passed to build_preprocessor() if use_preprocess=True.
+            Passed to ``build_preprocessor()`` if ``use_preprocess=True``.
 
         cat_encoder : str, default="ohe"
-            Passed to build_preprocessor() if use_preprocess=True.
+            Passed to ``build_preprocessor()`` if ``use_preprocess=True``.
 
         Returns
         -------
         tuple
-            (best_params, best_score)
+            ``(best_params, best_score)``
 
             best_params : Optional[Dict[str, Any]]
-                Best parameter set from GridSearchCV.
-                None when use_cv=False.
+                Best parameter set from ``GridSearchCV``.
+                ``None`` when ``use_cv=False``.
 
             best_score : Optional[float]
-                Best CV score from GridSearchCV.
-                None when use_cv=False.
+                Best CV score from ``GridSearchCV``.
+                ``None`` when ``use_cv=False``.
 
         Raises
         ------
         ValueError
-            If train_test_split_engine() has not been called first.
+            If ``train_test_split_engine()`` has not been called first.
 
         Side Effects
         ------------
-        Sets:
-        - self.model_pipeline
-        - self.feature_names
-        - self.input_use_cv
-        - self.input_cv_folds
-        - self.input_use_preprocess
-        - self.input_scoring
+        Sets or updates:
+
+        - ``self.model_pipeline``
+        Fitted outer pipeline. When CV is used, this is ``gs.best_estimator_``.
+        Otherwise, it is the directly fitted pipeline.
+
+        - ``self.feature_names``
+        Extracted feature names after fitting.
+
+        - ``self.input_use_cv``
+        Whether CV was enabled for the current run.
+
+        - ``self.input_cv_folds``
+        CV fold count used for the current run.
+
+        - ``self.input_use_preprocess``
+        Whether outer preprocessing was enabled for the current run.
+
+        - ``self.input_scoring``
+        Scoring method recorded for the current run.
+
+        - ``self.cv_search_report``
+        Compact CV summary dictionary when ``use_cv=True``. This includes:
+        ``use_cv``, ``cv_folds``, ``scoring``, ``best_params``,
+        ``best_cv_score``, and ``top_cv_results``.
+
+        - ``self.cv_results_raw``
+        Full raw ``GridSearchCV.cv_results_`` dictionary when ``use_cv=True``.
+
+        When ``use_cv=False``, both ``self.cv_search_report`` and
+        ``self.cv_results_raw`` are reset to ``None`` so no stale CV results remain
+        from previous training runs.
+
+        Notes
+        -----
+        CV splitter policy is delegated to ``_build_cv_and_scoring(...)``.
+
+        Typical behavior:
+        - classification + single-output -> ``StratifiedKFold``
+        - otherwise -> ``KFold``
+
+        If CV is used, the method also calls ``save_cv_search_report()`` to export
+        the compact top-ranked CV result summary to CSV.
+
+        This method stores two levels of CV result tracking:
+
+        1. ``self.cv_search_report``
+        A compact, human-readable summary intended for quick inspection and CSV
+        export.
+
+        2. ``self.cv_results_raw``
+        The full raw ``GridSearchCV.cv_results_`` dictionary intended for deeper
+        analysis, debugging, or later report expansion.
         """
         if self.X_train is None or self.Y_train is None:
             raise ValueError("⚠️ Run train_test_split_engine() before training ‼️")
@@ -771,13 +852,123 @@ class EnsembleBaseModelConfig(ABC):
             self.model_pipeline = gs.best_estimator_
             best_params = gs.best_params_
             best_score = gs.best_score_
+            self.cv_results_raw = gs.cv_results_
+
+            # ---------- Build compact CV report ----------
+            cv_results_df = pd.DataFrame(gs.cv_results_)
+            top_cv_results = (
+                cv_results_df[
+                    ["rank_test_score", "mean_test_score", "std_test_score", "params"]
+                ]
+                .sort_values("rank_test_score")
+                .head(5)
+                .to_dict(orient="records")
+            )
+
+            self.cv_search_report = {
+                "use_cv": use_cv,
+                "cv_folds": cv_folds,
+                "scoring": scoring,
+                "best_params": best_params,
+                "best_cv_score": best_score,
+                "top_cv_results": top_cv_results,
+            }
+
+            # ---------- Save compact CV report ----------
+            self.save_cv_search_report()
         else:
             # ---------- Original model training ----------
             pipe.fit(self.X_train, self.Y_train)
             self.model_pipeline = pipe
 
+            # ---------- Reset CV report ----------
+            self.cv_search_report = None
+            self.cv_results_raw = None
+
         self._extract_feature_names()
         return best_params, best_score
+    
+    # -------------------- Save CV report --------------------
+    def save_cv_search_report(
+        self,
+        folder_name: str = "CV_Search_Report",
+        file_name: str | None = None,
+    ) -> str | None:
+        """
+        Save the stored CV search summary to a CSV file.
+
+        This method exports the top-ranked cross-validation search results stored in
+        ``self.cv_search_report["top_cv_results"]`` into a report folder under
+        ``report_root``.
+
+        Parameters
+        ----------
+        folder_name : str, default="CV_Search_Report"
+            Folder name created under ``report_root`` for saved CV report files.
+
+        file_name : str or None, default=None
+            Optional custom CSV filename.
+            If ``None``, a timestamp-based filename is generated automatically.
+
+        Returns
+        -------
+        str or None
+            Full saved file path if the report is successfully exported.
+            Returns ``None`` if no CV search report or no top CV results are available.
+
+        Side Effects
+        ------------
+        - Creates a CSV file under ``report_root / folder_name``.
+        - Prints the saved file path when export succeeds.
+        - Prints a warning message and returns ``None`` when export is skipped.
+
+        Notes
+        -----
+        The saved CSV contains the top-ranked CV result rows with these fields:
+
+        - ``rank_test_score``
+        - ``mean_test_score``
+        - ``std_test_score``
+        - ``params``
+
+        The default filename format is:
+
+        ``{model_name}_cv_report_{YYYYMMDD_HHMMSS}.csv``
+
+        where ``model_name`` comes from ``self.input_model_type``. If that value is
+        unavailable, the current class name is used as fallback.
+
+        This method exports the compact summary report only. The full raw GridSearchCV
+        result dictionary remains available separately in ``self.cv_results_raw`` when
+        CV was used.
+        """
+        if not self.cv_search_report:
+            print("⚠️ No CV search report available to save ‼️")
+            return None
+
+        top_cv_results = self.cv_search_report.get("top_cv_results")
+        if not top_cv_results:
+            print("⚠️ No top CV results available to save ‼️")
+            return None
+
+        save_folder = os.path.join(report_root, folder_name)
+        os.makedirs(save_folder, exist_ok=True)
+
+        if file_name is None:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            model_name = self.input_model_type or self.__class__.__name__
+            file_name = f"{model_name}_cv_report_{timestamp}.csv"
+
+        if not file_name.endswith(".csv"):
+            file_name += ".csv"
+
+        save_path = os.path.join(save_folder, file_name)
+
+        cv_df = pd.DataFrame(top_cv_results)
+        cv_df.to_csv(save_path, index=False, encoding="utf-8-sig")
+
+        print(f"📦 CV report saved path: {save_path}")
+        return save_path
 
     # -------------------- Extract feature names --------------------
     def _extract_feature_names(self):
