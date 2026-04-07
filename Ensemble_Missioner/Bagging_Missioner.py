@@ -1014,7 +1014,8 @@ class Bagging_Missioner(EnsembleBaseModelConfig):
 
             if not hasattr(tree_model, "tree_"):
                 raise ValueError(
-                    f"⚠️ Selected base estimator {idx} is not tree-based ‼️"
+                    f"⚠️ Selected base estimator {idx} is not a single tree estimator compatible with plot_tree. "
+                    "For RandomForest-based estimators, use feature importance or permutation importance instead ‼️"
                 )
 
             plt.figure(figsize=(18, 10))
