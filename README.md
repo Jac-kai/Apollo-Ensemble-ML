@@ -80,6 +80,11 @@ Apollo can search folders, list available files, and load a selected dataset int
 ### 2. Feature and Target Selection
 Apollo uses a dedicated feature-selection workflow so users can choose one or multiple target columns and configure feature columns before model training.
 
+It supports:
+- single-output targets
+- multi-output targets
+- automatic X / y construction after feature-target selection
+
 ### 3. Classification and Regression Training
 Apollo separates classifier and regressor ensemble training menus.  
 Users can choose a model family, configure common training settings, collect ensemble-specific parameters, and launch training from a guided menu system.
@@ -110,7 +115,18 @@ It is designed to support both:
 - outer unified preprocessing
 - estimator-owned preprocessing pipelines
 
-### 6. Evaluation and Visualization
+### 6. Classification Target Label Encoding
+Apollo supports target-label encoding for classification workflows.
+
+This includes:
+- automatic label encoding for single-output classification targets when needed
+- column-wise label encoding for multi-output classification targets
+- preservation of target encoder state inside the model object
+- automatic decoding of predictions back to original target labels
+
+This allows classification workflows to train on encoded numeric targets internally while still presenting user-facing outputs with the original class labels.
+
+### 7. Evaluation and Visualization
 Apollo provides multiple evaluation-related workflows, including:
 
 - evaluation result display
@@ -121,7 +137,23 @@ Apollo provides multiple evaluation-related workflows, including:
 - tree plot visualization
 - confusion matrix generation
 
-### 7. Permutation Importance Workflow
+For classification workflows, evaluation now supports:
+- decoded original-label reporting
+- decoded confusion matrix display
+- single-output and multi-output classification evaluation
+- per-target metrics for multi-output classification
+
+### 8. Prediction Preview and Output Decoding
+Apollo prediction workflows support decoded output for classification tasks.
+
+If target-side label encoding was applied during training:
+- prediction preview returns original class labels instead of encoded class indices
+- model evaluation uses decoded true and predicted labels
+- confusion matrix plotting uses decoded labels for clearer interpretation
+
+This behavior improves readability and keeps user-facing outputs consistent with the original dataset labels.
+
+### 9. Permutation Importance Workflow
 Apollo includes a permutation importance engine that can:
 
 - compute feature importance by shuffled-feature performance drop
@@ -130,7 +162,7 @@ Apollo includes a permutation importance engine that can:
 - limit displayed features
 - optionally save output plots
 
-### 8. Model Management
+### 10. Model Management
 Apollo supports:
 
 - current model summary display
@@ -138,7 +170,9 @@ Apollo supports:
 - trained model loading
 - prediction with the current active model
 
-### 9. Modular Architecture
+Model persistence also preserves fitted target-label encoder state because the trained model object is saved as a whole.
+
+### 11. Modular Architecture
 Apollo is structured around reusable components, including:
 
 - engine layer
@@ -148,7 +182,7 @@ Apollo is structured around reusable components, including:
 - menu layer
 - estimator and param-grid helpers
 
-### 10. Cross-Validation Result Tracking
+### 12. Cross-Validation Result Tracking
 Apollo records cross-validation settings and best-search results during GridSearchCV workflows.  
 It can store compact CV summaries, keep raw CV search results in memory, and export top-ranked CV results as CSV reports for later inspection.
 
