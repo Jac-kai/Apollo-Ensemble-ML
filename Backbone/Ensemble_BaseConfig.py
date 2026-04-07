@@ -22,8 +22,8 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import (
-    MinMaxScaler,
     LabelEncoder,
+    MinMaxScaler,
     OneHotEncoder,
     OrdinalEncoder,
     RobustScaler,
@@ -325,7 +325,7 @@ class EnsembleBaseModelConfig(ABC):
             True if y is a DataFrame with two or more columns, otherwise False.
         """
         return isinstance(y, pd.DataFrame) and y.shape[1] > 1
-    
+
     # -------------------- Helper: Check target variable dimension (Encoding/Single-output) --------------------
     def _should_encode_single_target(self, y: pd.Series) -> bool:
         """
@@ -364,13 +364,10 @@ class EnsembleBaseModelConfig(ABC):
         This method is intended only for single-output targets stored as a
         pandas Series.
         """
-        return (
-            self.task == "classification"
-            and (
-                pd.api.types.is_object_dtype(y)
-                or pd.api.types.is_categorical_dtype(y)
-                or pd.api.types.is_bool_dtype(y)
-            )
+        return self.task == "classification" and (
+            pd.api.types.is_object_dtype(y)
+            or pd.api.types.is_categorical_dtype(y)
+            or pd.api.types.is_bool_dtype(y)
         )
 
     # -------------------- Helper: Check target variable dimension (Encoding/Multiple-output) --------------------
@@ -408,13 +405,10 @@ class EnsembleBaseModelConfig(ABC):
         This method only decides whether encoding is needed. It does not perform
         the encoding itself.
         """
-        return (
-            self.task == "classification"
-            and (
-                pd.api.types.is_object_dtype(y_col)
-                or pd.api.types.is_categorical_dtype(y_col)
-                or pd.api.types.is_bool_dtype(y_col)
-            )
+        return self.task == "classification" and (
+            pd.api.types.is_object_dtype(y_col)
+            or pd.api.types.is_categorical_dtype(y_col)
+            or pd.api.types.is_bool_dtype(y_col)
         )
 
     # -------------------- Helper: Encoding target variable --------------------
@@ -506,7 +500,7 @@ class EnsembleBaseModelConfig(ABC):
             if self.target_encoders:
                 self.y_label_encoded = True
                 self.cleaned_Y_data = encoded_df
-    
+
     # -------------------- Decoding target variable Y --------------------
     def decode_target_labels(self, preds):
         """
@@ -1187,7 +1181,7 @@ class EnsembleBaseModelConfig(ABC):
 
         self._extract_feature_names()
         return best_params, best_score
-    
+
     # -------------------- Save CV report --------------------
     def save_cv_search_report(
         self,

@@ -490,7 +490,7 @@ class AdaBoost_Missioner(EnsembleBaseModelConfig):
         preview : int, default=5
             Number of leading predictions to store in `self.prediction_preview` for
             quick inspection.
-            
+
         Returns
         -------
         Any

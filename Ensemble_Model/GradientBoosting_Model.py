@@ -553,7 +553,7 @@ class GradientBoostingClassifier_Model(GradientBoosting_Missioner):
                 f1_score(y_test_true, self.y_test_pred, average="weighted")
             ),
         }
-    
+
     # -------------------- Confusion matrix engine --------------------
     def confusion_matrix_engine(
         self,
@@ -714,6 +714,7 @@ class GradientBoostingClassifier_Model(GradientBoosting_Missioner):
 
         plt.show()
         plt.close()
+
 
 # -------------------- GradientBoosting regressor model --------------------
 class GradientBoostingRegressor_Model(GradientBoosting_Missioner):

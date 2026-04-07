@@ -752,7 +752,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
         fitted_model = self.get_fitted_gradient_boosting_estimator()
 
         if fitted_model is None:
-            raise ValueError("⚠️ No fitted Bagging estimator available ‼️")
+            raise ValueError("⚠️ No fitted GradientBoosting estimator available ‼️")
 
         feature_names = (
             self.feature_names
@@ -763,7 +763,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
 
         full_importances = []
 
-        # ---------- Case 1: bagging model itself exposes feature_importances_ ----------
+        # ---------- Case 1: estimator itself exposes feature_importances_ ----------
         if hasattr(fitted_model, "feature_importances_"):
             importances = fitted_model.feature_importances_
 
@@ -780,7 +780,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
         elif hasattr(fitted_model, "estimators_"):
             estimators = fitted_model.estimators_
 
-            # sklearn bagging usually stores per-estimator selected feature indices here
+            # Some ensemble estimators may store per-estimator selected feature indices here
             estimators_features = getattr(fitted_model, "estimators_features_", None)
 
             for idx, est in enumerate(estimators):
@@ -806,7 +806,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
                     # fallback: only safe when local importance length already matches full feature count
                     if len(local_imp) != n_features:
                         raise ValueError(
-                            "⚠️ Cannot align Bagging feature importances because "
+                            "⚠️ Cannot align GradientBoosting feature importances because "
                             "estimators_features_ is unavailable and local importance "
                             "length does not match full feature count ‼️"
                         )
@@ -816,7 +816,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
 
             if not full_importances:
                 raise ValueError(
-                    "⚠️ Current Bagging estimator does not support feature importance ‼️"
+                    "⚠️ Current GradientBoosting estimator does not support feature importance ‼️"
                 )
 
             full_importances = np.vstack(full_importances)
@@ -825,7 +825,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
 
         else:
             raise ValueError(
-                "⚠️ Current Bagging estimator does not support feature importance ‼️"
+                "⚠️ Current GradientBoosting estimator does not support feature importance ‼️"
             )
 
         importance_df = pd.DataFrame(

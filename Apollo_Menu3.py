@@ -872,13 +872,23 @@ def evaluation_menu(apollo: ApolloEngine):
         print("━" * menu_width)
 
         print("🔔 Notes:")
-        print(" - Show Evaluation Result / Prediction Preview: usually available after training.")
-        print(" - Predict Probability: only available for models that support probability prediction.")
+        print(
+            " - Show Evaluation Result / Prediction Preview: usually available after training."
+        )
+        print(
+            " - Predict Probability: only available for models that support probability prediction."
+        )
         print(" - Permutation Importance: usually available for fitted models.")
-        print(" - Feature Importance: only available for models exposing feature importance.")
+        print(
+            " - Feature Importance: only available for models exposing feature importance."
+        )
         print(" - Tree Plot: mainly intended for tree-based models.")
-        print("   For Bagging, tree plot is most suitable when the base estimator is a single DecisionTree.")
-        print("   RandomForest-based estimators are better inspected with feature importance or permutation importance.")
+        print(
+            "   For Bagging, tree plot is most suitable when the base estimator is a single DecisionTree."
+        )
+        print(
+            "   RandomForest-based estimators are better inspected with feature importance or permutation importance."
+        )
         print(" - Confusion Matrix: classification workflow only.")
         print("━" * menu_width)
 

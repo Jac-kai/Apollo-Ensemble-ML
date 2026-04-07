@@ -735,6 +735,7 @@ class StackingClassifier_Model(Stacking_Missioner):
         plt.show()
         plt.close()
 
+
 # -------------------- Stacking regressor model --------------------
 class StackingRegressor_Model(Stacking_Missioner):
     """
