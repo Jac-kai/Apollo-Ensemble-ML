@@ -190,14 +190,13 @@ def select_from_options(
 
     selected_num = input_int("🕯️ Select option", default=default)
     if selected_num is None:
-        return None
+        return None, None
 
     if selected_num not in options:
         print("⚠️ Selection is out of range ‼️")
-        return None
+        return None, None
 
-    return options[selected_num]  # Return the select options
-
+    return selected_num, options[selected_num]
 
 # -------------------- Helper: get task type --------------------
 def get_model_task_type(apollo: ApolloEngine, model_name: str) -> str | None:
@@ -293,24 +292,24 @@ def collect_common_training_params(task_type: str) -> dict | None:
         "use_preprocess",
     ):
         config = COMMON_PARAM_CONFIG[param_name]
-        selected_value = select_from_options(
+        selected_num, selected_value = select_from_options(
             label=config["label"],
             options=config["options"],
             default=config["default"],
         )
-        if selected_value is None:
+        if selected_num is None:
             return None
         params[param_name] = selected_value
 
     # ---------- Get CV fold parameter ----------
     if params["use_cv"]:
         config = COMMON_PARAM_CONFIG["cv_folds"]
-        selected_value = select_from_options(
+        selected_num, selected_value = select_from_options(
             label=config["label"],
             options=config["options"],
             default=config["default"],
         )
-        if selected_value is None:
+        if selected_num is None:
             return None
         params["cv_folds"] = selected_value
     else:
@@ -318,12 +317,12 @@ def collect_common_training_params(task_type: str) -> dict | None:
 
     # ---------- Get scoring method ----------
     scoring_config = SCORING_CONFIG[task_type]
-    scoring_value = select_from_options(
+    selected_num, scoring_value = select_from_options(
         label=scoring_config["label"],
         options=scoring_config["options"],
         default=scoring_config["default"],
     )
-    if scoring_value is None:
+    if selected_num is None:
         return None
 
     params["scoring"] = scoring_value
@@ -394,36 +393,48 @@ def collect_extra_steps(feature_count: int | None = None):
         [("pca", PCA(n_components=3))]
     """
     # ---------- Get PCA parameter ----------
-    use_pca = select_from_options(
+    selected_num, use_pca = select_from_options(
         label=PCA_PARAM_CONFIG["use_pca"]["label"],
         options=PCA_PARAM_CONFIG["use_pca"]["options"],
         default=PCA_PARAM_CONFIG["use_pca"]["default"],
     )
-    if use_pca is None:
+
+    if selected_num is None:
         return None
 
     if not use_pca:
         return []
 
     # ---------- Get PCA n component parameter ----------
-    raw_options = PCA_PARAM_CONFIG["pca_n_components"]["options"]
+    pca_config = PCA_PARAM_CONFIG["pca_n_components"]
+    all_options = pca_config["options"]
 
-    # ---------- Align feature aoumnt and n component ----------
+    # Keep values where v is None or v <= feature_count
     if feature_count is not None:
         filtered_options = {
-            k: v
-            for k, v in raw_options.items()
-            if v is None or v <= feature_count  # Limitations
+            k: v for k, v in all_options.items()
+            if v is None or v <= feature_count
         }
     else:
-        filtered_options = raw_options  # No feature count
+        filtered_options = all_options.copy()
 
-    pca_n_components = select_from_options(
-        label=PCA_PARAM_CONFIG["pca_n_components"]["label"],
+    if not filtered_options:
+        print("⚠️ No valid PCA component options available ‼️")
+        return None
+
+    # ---------- Resolve default key ----------
+    default_key = pca_config["default"]
+    if default_key not in filtered_options:
+        default_key = next(iter(filtered_options))
+
+    # ---------- Select PCA n_components ----------
+    selected_num, pca_n_components = select_from_options(
+        label=pca_config["label"],
         options=filtered_options,
-        default=PCA_PARAM_CONFIG["pca_n_components"]["default"],
+        default=default_key,
     )
-    if pca_n_components is None:  # No select n component
+
+    if selected_num is None:
         return None
 
     return [("pca", PCA(n_components=pca_n_components))]
@@ -461,12 +472,12 @@ def collect_ensemble_simple_params(model_name: str) -> dict | None:
 
     # ---------- Collect esemble parameters ----------
     for param_config in param_list:
-        selected_value = select_from_options(
+        selected_num, selected_value = select_from_options(
             label=param_config["label"],
             options=param_config["options"],
             default=param_config.get("default"),
         )
-        if selected_value is None:
+        if selected_num is None:
             return None
 
         kwargs[param_config["name"]] = selected_value
@@ -598,12 +609,12 @@ def collect_estimators(
     # ---------- Count estimator ----------
     count_options = {i: i for i in range(min_estimators, max_estimators + 1)}
 
-    estimator_count = select_from_options(
+    selected_num, estimator_count = select_from_options(
         label="🧮 Number of Base Estimators",
         options=count_options,
         default=min_estimators,
     )
-    if estimator_count is None:
+    if selected_num is None:
         return None
 
     # ---------- Initialize collectors ----------
@@ -753,12 +764,12 @@ def maybe_get_default_param_grid(
         return None
 
     # ---------- Using default CV prids for training ----------
-    use_default_grid = select_from_options(
+    selected_num, use_default_grid = select_from_options(
         label="🧪 Use Default Param Grid",
         options={1: True, 2: False},
         default=1,
     )
-    if use_default_grid is None:
+    if selected_num is None:
         return None
 
     if not use_default_grid:
@@ -890,11 +901,16 @@ def _select_voting_weights(estimators: Sequence[tuple[str, Any]]) -> list[int] |
     else:
         return [1] * est_count
 
-    return select_from_options(
+    selected_num, weights = select_from_options(
         label="⚖️ Voting Weights",
         options=options,
         default=1,
     )
+
+    if selected_num is None:
+        return None
+
+    return weights
 
 
 # -------------------- Helper: collect ensemble train kwargs --------------------

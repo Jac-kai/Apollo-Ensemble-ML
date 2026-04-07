@@ -197,13 +197,13 @@ def train_classifier_menu(apollo: ApolloEngine):
     if _has_categorical_features(feature_data):
         logger.info("Categorical features detected; encoder selection required")
         config = COMMON_PARAM_CONFIG["cat_encoder"]  # Show the encoding options
-        selected_encoder = select_from_options(
+        selected_num, selected_encoder = select_from_options(
             label=config["label"],
             options=config["options"],
             default=config["default"],
         )
 
-        if selected_encoder is None:
+        if selected_num is None:
             logger.info("Train Classifier cancelled at categorical encoder selection")
             return
 
@@ -330,13 +330,13 @@ def train_regressor_menu(apollo: ApolloEngine):
     if _has_categorical_features(feature_data):
         logger.info("Categorical features detected; encoder selection required")
         config = COMMON_PARAM_CONFIG["cat_encoder"]  # Show the encoding options
-        selected_encoder = select_from_options(
+        selected_num, selected_encoder = select_from_options(
             label=config["label"],
             options=config["options"],
             default=config["default"],
         )
 
-        if selected_encoder is None:
+        if selected_num is None:
             logger.info("Train Regressor cancelled at categorical encoder selection")
             return
 

@@ -486,34 +486,34 @@ def permutation_importance_menu(apollo: ApolloEngine):
 
     # ---------- Select n_repeats ----------
     repeats_config = PERMUTATION_IMPORTANCE_CONFIG["n_repeats"]
-    n_repeats = select_from_options(
+    selected_num, n_repeats = select_from_options(
         label=repeats_config["label"],
         options=repeats_config["options"],
         default=repeats_config["default"],
     )
-    if n_repeats is None:
+    if selected_num is None:
         logger.info("Permutation Importance cancelled at n_repeats selection")
         return
-
+    
     # ---------- Select max_display ----------
     display_config = PERMUTATION_IMPORTANCE_CONFIG["max_display"]
-    max_display = select_from_options(
+    selected_num, max_display = select_from_options(
         label=display_config["label"],
         options=display_config["options"],
         default=display_config["default"],
     )
-    if max_display is None:
+    if selected_num is None:
         logger.info("Permutation Importance cancelled at max_display selection")
         return
-
+    
     # ---------- Select scoring ----------
     scoring_config = SCORING_CONFIG[scoring_task_type]
-    scoring = select_from_options(
+    selected_num, scoring = select_from_options(
         label=scoring_config["label"],
         options=scoring_config["options"],
         default=scoring_config["default"],
     )
-    if scoring is None:
+    if selected_num is None:
         logger.info("Permutation Importance cancelled at scoring selection")
         return
 
