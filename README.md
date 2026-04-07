@@ -70,6 +70,15 @@ Apollo currently supports both classification and regression workflows for the f
 
 The internal model registry also records each model’s task type, family, and default scoring method so Apollo can dispatch the correct training and evaluation workflow automatically.
 
+Model support at the workflow level does not imply that every model supports every target structure or every evaluation option.
+
+For example:
+- some classifier ensembles support binary or multiclass single-target classification but do not support multi-output classification directly
+- some fitted models do not expose probability prediction
+- some fitted models do not expose feature-importance or tree-plot workflows
+
+Apollo keeps these workflows modular and applies model-specific checks during training and evaluation.
+
 ---
 
 ## Core Features
@@ -84,6 +93,11 @@ It supports:
 - single-output targets
 - multi-output targets
 - automatic X / y construction after feature-target selection
+
+Note:  
+Apollo can store and prepare both single-output and multi-output target structures at the workflow level.  
+However, actual trainability for multi-output classification depends on the selected sklearn model family.  
+Some ensemble classifiers support only binary or multiclass single-target classification and do not support multi-output classification directly.
 
 ### 3. Classification and Regression Training
 Apollo separates classifier and regressor ensemble training menus.  
@@ -137,11 +151,23 @@ Apollo provides multiple evaluation-related workflows, including:
 - tree plot visualization
 - confusion matrix generation
 
-For classification workflows, evaluation now supports:
+For classification workflows, evaluation supports:
 - decoded original-label reporting
 - decoded confusion matrix display
-- single-output and multi-output classification evaluation
-- per-target metrics for multi-output classification
+- single-output and multi-output evaluation logic at the workflow level
+- per-target metrics for supported multi-output classification workflows
+
+Evaluation and visualization availability depends on the fitted model.
+
+In practice:
+- prediction preview and evaluation-result display are generally available after successful training
+- permutation importance is broadly applicable when the current model supports the internal workflow
+- predict-probability preview is only available for models whose fitted pipeline supports probability prediction
+- feature importance is only available for models exposing feature-importance behavior
+- tree plotting is only available for supported tree-based models
+- confusion matrix is intended for classification workflows
+
+Because Apollo integrates multiple ensemble families, not every evaluation or visualization option is available for every fitted model.
 
 ### 8. Prediction Preview and Output Decoding
 Apollo prediction workflows support decoded output for classification tasks.
@@ -161,6 +187,15 @@ Apollo includes a permutation importance engine that can:
 - let the user choose scoring metrics
 - limit displayed features
 - optionally save output plots
+
+Permutation importance is computed at the original input-feature level.
+
+This means:
+- the importance labels correspond to the raw input columns used in `X_test`
+- the displayed feature names are aligned with the original feature selection
+- internally expanded transformed columns produced by preprocessing steps such as one-hot encoding are not used as the displayed permutation-importance labels
+
+This design prevents feature-name mismatch when categorical preprocessing expands one original feature into multiple transformed columns.
 
 ### 10. Model Management
 Apollo supports:
@@ -224,6 +259,13 @@ Apollo/
 │   ├── GradientBoosting_Model.py
 │   └── Stacking_Model.py
 │
-└── Estimators_ParamsGrid/
-    ├── Estimators.py
-    └── Params_Grid.py
+├── Estimator_Helper/
+│   ├── BaseEstimator_Builder.py
+│   ├── Classifier_Estimator_Helper.py
+│   └── Regressor_Estimator_Helper.py
+│
+├── Param_Grid_Helper/
+│   ├── Classifier_Param_Grid_Helper.py
+│   └── Regressor_Param_Grid_Helper.py
+│
+└── Apollo_Logs/

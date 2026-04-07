@@ -804,9 +804,15 @@ def evaluation_menu(apollo: ApolloEngine):
     Display the Apollo evaluation-services menu.
 
     This dispatcher provides access to evaluation-related workflows for the
-    active Apollo model, including evaluation display, prediction preview,
-    predict-probability preview, permutation importance, feature importance,
-    tree plotting, and confusion-matrix visualization.
+    active Apollo model, including:
+
+    - evaluation-result display
+    - prediction preview
+    - predict-probability preview
+    - permutation importance
+    - feature importance
+    - tree plotting
+    - confusion-matrix visualization
 
     Parameters
     ----------
@@ -822,6 +828,28 @@ def evaluation_menu(apollo: ApolloEngine):
     The same Apollo engine instance is reused across all evaluation actions so
     the current model state and evaluation-related runtime information remain
     available throughout the active session.
+
+    Evaluation-function availability depends on the fitted model type.
+
+    General guidance:
+    - ``Show Evaluation Result`` and ``Prediction Preview`` are usually
+    available after successful model training.
+    - ``Permutation Importance`` is generally available for fitted models that
+    support the underlying workflow.
+    - ``Predict Probability`` is only available for classifier models whose
+    fitted pipeline supports probability prediction.
+    - ``Feature Importance`` is only available for models that expose a
+    feature-importance workflow or equivalent importance attributes.
+    - ``Tree Plot`` is only available for supported tree-based models or
+    supported fitted tree-estimator collections.
+    - ``Confusion Matrix`` is intended for classification workflows.
+
+    Because Apollo supports multiple ensemble families, not every evaluation
+    menu item is guaranteed to be available for every current model.
+
+    If a selected evaluation workflow is unsupported by the current model,
+    the corresponding submenu prints a warning and exits safely instead of
+    crashing the session.
     """
     logger.info("Entered menu: Apollo Evaluation Menu")
 
@@ -841,6 +869,15 @@ def evaluation_menu(apollo: ApolloEngine):
         print("🏮  Apollo Evaluation Menu 🏮 ".center(menu_width, "━"))
         for opt, label, _ in menu:
             print(f"{opt}. {label}")
+        print("━" * menu_width)
+
+        print("🔔 Notes:")
+        print(" - Show Evaluation Result / Prediction Preview: usually available after training.")
+        print(" - Predict Probability: only available for models that support probability prediction.")
+        print(" - Permutation Importance: usually available for fitted models.")
+        print(" - Feature Importance: only available for models exposing feature importance.")
+        print(" - Tree Plot: only available for supported tree-based models.")
+        print(" - Confusion Matrix: classification workflow only.")
         print("━" * menu_width)
 
         choice = input_int("🕯️ Select Evaluation Services", default=-1)

@@ -1456,44 +1456,90 @@ class EnsembleBaseModelConfig(ABC):
         """
         Compute and optionally plot permutation importance on the test set.
 
+        This method evaluates feature importance by repeatedly shuffling each
+        original input feature column in ``self.X_test`` and measuring the
+        resulting drop in model performance on ``self.Y_test``.
+
         Parameters
         ----------
         n_repeats : int, default=10
-            Number of random shuffles used for each feature.
+            Number of shuffle repetitions used for each feature.
 
         scoring : str or None, default=None
-            sklearn scoring string passed to permutation_importance().
-            If None, the method uses:
-            - "accuracy" for classification
-            - "r2" for regression
+            Scoring method passed to ``sklearn.inspection.permutation_importance``.
+
+            If ``None``, a task-based default is used:
+            - ``"accuracy"`` for classification
+            - ``"r2"`` for regression
 
         max_display : int, default=20
-            Maximum number of features displayed in the plot.
+            Maximum number of features displayed in the output plot and preview.
 
         save_fig : bool, default=False
-            Whether to save the generated plot.
+            Whether to save the generated permutation-importance plot.
 
         folder_name : str, default="Permutation_Importance"
-            Folder name used when saving the figure.
+            Folder name created under ``report_root`` when saving the figure.
 
         file_name : str or None, default=None
-            Optional custom figure file name.
+            Optional custom figure filename.
+            If ``None``, a timestamp-based filename is generated automatically.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame containing:
-            - feature
-            - importance_mean
-            - importance_std
+            A DataFrame sorted by descending importance, containing:
+
+            - ``feature``:
+            Original input feature name from ``self.X_test.columns``
+
+            - ``importance_mean``:
+            Mean permutation importance across repeated shuffles
+
+            - ``importance_std``:
+            Standard deviation of permutation importance across repeated shuffles
 
         Raises
         ------
         ValueError
-            If the model pipeline is not fitted.
-
+            If the model has not been trained yet.
         ValueError
-            If X_test / Y_test is unavailable.
+            If test data is unavailable.
+        ValueError
+            If the number of original input feature names does not match the
+            number of permutation-importance results.
+
+        Notes
+        -----
+        This method intentionally uses the original input feature names from
+        ``self.X_test.columns`` rather than transformed feature names stored in
+        ``self.feature_names``.
+
+        Reason:
+        - ``permutation_importance(...)`` is executed on ``X=self.X_test``
+        - therefore, the returned importance values correspond to the original
+        input columns
+        - they do NOT correspond to post-preprocessing expanded columns such as
+        one-hot encoded feature names
+
+        This distinction is especially important when outer preprocessing uses
+        encoders like ``OneHotEncoder``. In such cases, one original categorical
+        feature may expand into multiple transformed columns, but permutation
+        importance still returns one importance value per original input feature.
+
+        Examples
+        --------
+        If the original input feature set is:
+
+            ["odor", "habitat", "population"]
+
+        then the returned importance table also contains exactly those three
+        feature labels.
+
+        If ``odor`` is one-hot encoded internally into multiple transformed
+        columns, permutation importance still reports one importance value for
+        the original ``odor`` column because the shuffle is applied at the raw
+        input-data level before the pipeline preprocessing step.
         """
         if self.model_pipeline is None:
             raise ValueError("⚠️ Train the model before permutation importance ‼️")
@@ -1516,11 +1562,12 @@ class EnsembleBaseModelConfig(ABC):
             n_jobs=-1,
         )
 
-        feature_names = (
-            self.feature_names
-            if self.feature_names is not None
-            else self.cleaned_X_data.columns.tolist()
-        )
+        feature_names = self.X_test.columns.tolist()
+
+        if len(feature_names) != len(result.importances_mean):
+            raise ValueError(
+                "⚠️ Feature name count does not match permutation importance result length ‼️"
+            )
 
         importance_df = pd.DataFrame(
             {
