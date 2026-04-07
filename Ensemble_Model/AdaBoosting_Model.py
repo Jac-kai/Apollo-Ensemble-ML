@@ -293,7 +293,7 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
     # -------------------- Classification evaluation --------------------
     def model_evaluation_engine(self) -> Dict[str, Any]:
         """
-        Evaluate the fitted AdaBoost classifier on training and test datasets.
+        Evaluate the fitted classifier on training and test datasets.
 
         This method generates predictions from the fitted model pipeline for both
         ``X_train`` and ``X_test``, then computes classification metrics.
@@ -346,9 +346,12 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
         - ``self.y_train_pred``
         - ``self.y_test_pred``
 
-        For multi-output classification, this method assumes that predictions are
-        returned as a 2-dimensional array whose column order matches
-        ``self.Y_train.columns`` and ``self.Y_test.columns``.
+        If target-side label encoding was applied during training, both
+        predictions and true labels are decoded back to original labels before
+        metric computation.
+
+        For multi-output classification, decoded predictions may be stored as a
+        ``pandas.DataFrame`` whose column names align with the target columns.
 
         Weighted precision and weighted recall are computed with
         ``zero_division=0`` to avoid warnings when a class has no predicted
@@ -365,84 +368,94 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
         ):
             raise ValueError("⚠️ Train/test data is unavailable for evaluation ‼️")
 
-        self.y_train_pred = self.model_pipeline.predict(self.X_train)
-        self.y_test_pred = self.model_pipeline.predict(self.X_test)
+        # ---------- Raw encoded predictions ----------
+        train_pred_raw = self.model_pipeline.predict(self.X_train)
+        test_pred_raw = self.model_pipeline.predict(self.X_test)
 
+        # ---------- Decode predictions ----------
+        self.y_train_pred = self._maybe_decode_predictions(train_pred_raw)
+        self.y_test_pred = self._maybe_decode_predictions(test_pred_raw)
+
+        # ---------- Decode true labels ----------
+        y_train_true = self.decode_target_labels(self.Y_train)
+        y_test_true = self.decode_target_labels(self.Y_test)
+
+        # ---------- Multi-output classification ----------
         if self._is_multi_output(self.Y_test):
             train_accuracy_per_target = {
-                col: float(accuracy_score(self.Y_train[col], self.y_train_pred[:, idx]))
-                for idx, col in enumerate(self.Y_train.columns)
+                col: float(accuracy_score(y_train_true[col], self.y_train_pred[col]))
+                for col in y_train_true.columns
             }
             test_accuracy_per_target = {
-                col: float(accuracy_score(self.Y_test[col], self.y_test_pred[:, idx]))
-                for idx, col in enumerate(self.Y_test.columns)
+                col: float(accuracy_score(y_test_true[col], self.y_test_pred[col]))
+                for col in y_test_true.columns
             }
 
             train_precision_weighted_per_target = {
                 col: float(
                     precision_score(
-                        self.Y_train[col],
-                        self.y_train_pred[:, idx],
+                        y_train_true[col],
+                        self.y_train_pred[col],
                         average="weighted",
                         zero_division=0,
                     )
                 )
-                for idx, col in enumerate(self.Y_train.columns)
+                for col in y_train_true.columns
             }
             test_precision_weighted_per_target = {
                 col: float(
                     precision_score(
-                        self.Y_test[col],
-                        self.y_test_pred[:, idx],
+                        y_test_true[col],
+                        self.y_test_pred[col],
                         average="weighted",
                         zero_division=0,
                     )
                 )
-                for idx, col in enumerate(self.Y_test.columns)
+                for col in y_test_true.columns
             }
 
             train_recall_weighted_per_target = {
                 col: float(
                     recall_score(
-                        self.Y_train[col],
-                        self.y_train_pred[:, idx],
+                        y_train_true[col],
+                        self.y_train_pred[col],
                         average="weighted",
                         zero_division=0,
                     )
                 )
-                for idx, col in enumerate(self.Y_train.columns)
+                for col in y_train_true.columns
             }
             test_recall_weighted_per_target = {
                 col: float(
                     recall_score(
-                        self.Y_test[col],
-                        self.y_test_pred[:, idx],
+                        y_test_true[col],
+                        self.y_test_pred[col],
                         average="weighted",
                         zero_division=0,
                     )
                 )
-                for idx, col in enumerate(self.Y_test.columns)
+                for col in y_test_true.columns
             }
 
             train_f1_weighted_per_target = {
                 col: float(
                     f1_score(
-                        self.Y_train[col],
-                        self.y_train_pred[:, idx],
+                        y_train_true[col],
+                        self.y_train_pred[col],
                         average="weighted",
                     )
                 )
-                for idx, col in enumerate(self.Y_train.columns)
+                for col in y_train_true.columns
             }
             test_f1_weighted_per_target = {
                 col: float(
                     f1_score(
-                        self.Y_test[col],
-                        self.y_test_pred[:, idx],
+                        y_test_true[col],
+                        self.y_test_pred[col],
                         average="weighted",
                     )
                 )
-                for idx, col in enumerate(self.Y_test.columns)
+                for col in y_test_true.columns
             }
 
             return {
@@ -480,12 +493,13 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
                 "test_f1_weighted_per_target": test_f1_weighted_per_target,
             }
 
+        # ---------- Single-output classification ----------
         return {
-            "train_accuracy": float(accuracy_score(self.Y_train, self.y_train_pred)),
-            "test_accuracy": float(accuracy_score(self.Y_test, self.y_test_pred)),
+            "train_accuracy": float(accuracy_score(y_train_true, self.y_train_pred)),
+            "test_accuracy": float(accuracy_score(y_test_true, self.y_test_pred)),
             "train_precision_weighted": float(
                 precision_score(
-                    self.Y_train,
+                    y_train_true,
                     self.y_train_pred,
                     average="weighted",
                     zero_division=0,
@@ -493,7 +507,7 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
             ),
             "test_precision_weighted": float(
                 precision_score(
-                    self.Y_test,
+                    y_test_true,
                     self.y_test_pred,
                     average="weighted",
                     zero_division=0,
@@ -501,7 +515,7 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
             ),
             "train_recall_weighted": float(
                 recall_score(
-                    self.Y_train,
+                    y_train_true,
                     self.y_train_pred,
                     average="weighted",
                     zero_division=0,
@@ -509,17 +523,17 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
             ),
             "test_recall_weighted": float(
                 recall_score(
-                    self.Y_test,
+                    y_test_true,
                     self.y_test_pred,
                     average="weighted",
                     zero_division=0,
                 )
             ),
             "train_f1_weighted": float(
-                f1_score(self.Y_train, self.y_train_pred, average="weighted")
+                f1_score(y_train_true, self.y_train_pred, average="weighted")
             ),
             "test_f1_weighted": float(
-                f1_score(self.Y_test, self.y_test_pred, average="weighted")
+                f1_score(y_test_true, self.y_test_pred, average="weighted")
             ),
         }
 
@@ -538,12 +552,12 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
         This method generates predictions on the test set and plots a confusion
         matrix using scikit-learn's ``ConfusionMatrixDisplay``.
 
-        For single-output classification, the confusion matrix is computed
-        directly from ``Y_test`` and predicted labels.
+        For single-output classification, the confusion matrix is computed directly
+        from decoded ``Y_test`` and decoded predicted labels.
 
-        For multi-output classification, a specific target column must be
-        selected through ``target_col`` so that one confusion matrix can be
-        plotted for that target at a time.
+        For multi-output classification, a specific target column must be selected
+        through ``target_col`` so that one confusion matrix can be plotted for that
+        target at a time.
 
         Parameters
         ----------
@@ -594,6 +608,16 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
 
         Notes
         -----
+        If target-side label encoding was applied during training, both true labels
+        and predicted labels are decoded back to their original label values before
+        confusion matrix computation.
+
+        In multi-output classification workflows, decoded predictions may be
+        represented as either:
+        - a ``pandas.DataFrame`` with target-column names
+        - a 2-dimensional array-like object whose column order matches
+        ``self.Y_test.columns``
+
         When ``save_fig=True``, the figure is saved under:
         ``os.path.join(report_root, folder_name)``
 
@@ -615,7 +639,11 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
                 "⚠️ Test data is unavailable for confusion matrix plotting ‼️"
             )
 
+        # ---------- Predict and decode ----------
         y_pred = self.model_pipeline.predict(self.X_test)
+        y_pred = self._maybe_decode_predictions(y_pred)
+
+        y_true_plot_all = self.decode_target_labels(self.Y_test)
 
         # ---------- Multi-output ----------
         if self._is_multi_output(self.Y_test):
@@ -628,13 +656,18 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
                 raise ValueError(f"⚠️ target_col '{target_col}' not found in Y_test ‼️")
 
             col_idx = list(self.Y_test.columns).index(target_col)
-            y_true_plot = self.Y_test[target_col]
-            y_pred_plot = y_pred[:, col_idx]
+            y_true_plot = y_true_plot_all[target_col]
+
+            if isinstance(y_pred, pd.DataFrame):
+                y_pred_plot = y_pred[target_col]
+            else:
+                y_pred_plot = y_pred[:, col_idx]
+
             title = f"{self.__class__.__name__} Confusion Matrix ({target_col})"
 
         # ---------- Single-output ----------
         else:
-            y_true_plot = self.Y_test
+            y_true_plot = y_true_plot_all
             y_pred_plot = y_pred
             title = f"{self.__class__.__name__} Confusion Matrix"
 
@@ -653,7 +686,10 @@ class AdaBoostClassifier_Model(AdaBoost_Missioner):
             if file_name is None:
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 safe_suffix = f"_{target_col}" if target_col else ""
-                file_name = f"{self.__class__.__name__}_confusion_matrix{safe_suffix}_{timestamp}.png"
+                file_name = (
+                    f"{self.__class__.__name__}_confusion_matrix"
+                    f"{safe_suffix}_{timestamp}.png"
+                )
 
             save_path = os.path.join(save_folder, file_name)
             plt.savefig(save_path, dpi=200, bbox_inches="tight")
