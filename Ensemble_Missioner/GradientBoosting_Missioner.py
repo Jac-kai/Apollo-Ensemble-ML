@@ -536,12 +536,17 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
         Returns
         -------
         Any
-            Predicted values returned by the fitted pipeline.
+            Prediction output returned by the fitted pipeline.
 
-            For classification tasks, this is typically an array-like collection of
-            predicted class labels.
-            For regression tasks, this is typically an array-like collection of
+            - For regression tasks, this is typically an array-like collection of
             predicted numeric values.
+            - For classification tasks, predictions are returned after optional
+            target-label decoding. If target label encoding was applied during
+            training, the returned values are typically the original class labels
+            rather than encoded class indices.
+
+            In multi-output classification workflows, the returned object may be a
+            pandas DataFrame containing decoded target columns.
 
         Raises
         ------
@@ -553,8 +558,12 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
 
         Notes
         -----
-        This method stores a small preview of predictions in `self.prediction_preview`
-        when possible, which can be useful for logging, inspection, or debugging.
+        This method stores a small preview of predictions in ``self.prediction_preview``
+        when possible, which can be useful for quick inspection, logging, or debugging.
+
+        If target-side label encoding was applied during training, predictions are
+        passed through ``self._maybe_decode_predictions(...)`` before preview caching
+        and return.
         """
         if self.model_pipeline is None:
             raise ValueError("⚠️ Train the model before prediction ‼️")
@@ -565,6 +574,7 @@ class GradientBoosting_Missioner(EnsembleBaseModelConfig):
             X_data = self.X_test
 
         preds = self.model_pipeline.predict(X_data)
+        preds = self._maybe_decode_predictions(preds)
 
         try:
             self.prediction_preview = preds[:preview]

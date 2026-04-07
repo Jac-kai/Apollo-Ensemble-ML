@@ -495,6 +495,16 @@ class Stacking_Missioner(EnsembleBaseModelConfig):
         Any
             Prediction output returned by the fitted pipeline.
 
+            - For regression tasks, this is typically an array-like collection of
+            predicted numeric values.
+            - For classification tasks, predictions are returned after optional
+            target-label decoding. If target label encoding was applied during
+            training, the returned values are typically the original class labels
+            rather than encoded class indices.
+
+            In multi-output classification workflows, the returned object may be a
+            pandas DataFrame containing decoded target columns.
+
         Raises
         ------
         ValueError
@@ -505,8 +515,12 @@ class Stacking_Missioner(EnsembleBaseModelConfig):
 
         Notes
         -----
-        The cached ``prediction_preview`` is intended only for quick inspection.
-        The full prediction result is still returned unchanged.
+        This method stores a small preview of predictions in ``self.prediction_preview``
+        when possible, which can be useful for quick inspection, logging, or debugging.
+
+        If target-side label encoding was applied during training, predictions are
+        passed through ``self._maybe_decode_predictions(...)`` before preview caching
+        and return.
         """
         if self.model_pipeline is None:
             raise ValueError("⚠️ Train the model before prediction ‼️")
@@ -517,6 +531,7 @@ class Stacking_Missioner(EnsembleBaseModelConfig):
             X_data = self.X_test
 
         preds = self.model_pipeline.predict(X_data)
+        preds = self._maybe_decode_predictions(preds)
 
         try:
             self.prediction_preview = preds[:preview]

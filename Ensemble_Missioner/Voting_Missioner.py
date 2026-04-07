@@ -496,8 +496,17 @@ class Voting_Missioner(EnsembleBaseModelConfig):
         Returns
         -------
         Any
-            Prediction output returned by the fitted pipeline. This is typically
-            a NumPy array, pandas Series, or similar sklearn-compatible result.
+            Prediction output returned by the fitted pipeline.
+
+            - For regression tasks, this is typically an array-like collection of
+            predicted numeric values.
+            - For classification tasks, predictions are returned after optional
+            target-label decoding. If target label encoding was applied during
+            training, the returned values are typically the original class labels
+            rather than encoded class indices.
+
+            In multi-output classification workflows, the returned object may be a
+            pandas DataFrame containing decoded target columns.
 
         Raises
         ------
@@ -509,8 +518,12 @@ class Voting_Missioner(EnsembleBaseModelConfig):
 
         Notes
         -----
-        The cached ``prediction_preview`` is meant for quick inspection only.
-        It does not alter the returned full prediction result.
+        This method stores a small preview of predictions in ``self.prediction_preview``
+        when possible, which can be useful for quick inspection, logging, or debugging.
+
+        If target-side label encoding was applied during training, predictions are
+        passed through ``self._maybe_decode_predictions(...)`` before preview caching
+        and return.
         """
         if self.model_pipeline is None:
             raise ValueError("⚠️ Train the model before prediction ‼️")
@@ -521,6 +534,7 @@ class Voting_Missioner(EnsembleBaseModelConfig):
             X_data = self.X_test
 
         preds = self.model_pipeline.predict(X_data)
+        preds = self._maybe_decode_predictions(preds)
 
         try:
             self.prediction_preview = preds[:preview]

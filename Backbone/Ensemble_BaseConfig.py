@@ -23,6 +23,7 @@ from sklearn.model_selection import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import (
     MinMaxScaler,
+    LabelEncoder,
     OneHotEncoder,
     OrdinalEncoder,
     RobustScaler,
@@ -214,6 +215,23 @@ class EnsembleBaseModelConfig(ABC):
         self.y_test_pred = None
         self.prediction_preview = None
 
+        # ---------- Target encoding states ----------
+        self.target_encoder = None
+        self.target_encoders = {}
+        self.target_classes_ = None
+        self.multi_target_classes_ = {}
+        self.y_label_encoded = False
+        self.original_y_dtype = getattr(self.cleaned_Y_data, "dtype", None)
+        self.original_y_name = getattr(self.cleaned_Y_data, "name", None)
+        self.original_y_columns = (
+            list(self.cleaned_Y_data.columns)
+            if isinstance(self.cleaned_Y_data, pd.DataFrame)
+            else None
+        )
+
+        # ---------- Fit target label encoder if needed ----------
+        self._fit_target_label_encoder_if_needed()
+
         # ---------- Trained objects and feature names ----------
         self.model_pipeline = None
         self.feature_names = None
@@ -307,6 +325,288 @@ class EnsembleBaseModelConfig(ABC):
             True if y is a DataFrame with two or more columns, otherwise False.
         """
         return isinstance(y, pd.DataFrame) and y.shape[1] > 1
+    
+    # -------------------- Helper: Check target variable dimension (Encoding/Single-output) --------------------
+    def _should_encode_single_target(self, y: pd.Series) -> bool:
+        """
+        Return whether a single-output target series should be label-encoded.
+
+        This helper is used only for classification workflows. It checks whether
+        the provided single-output target series has a label-like dtype that should
+        be converted into numeric class indices before model training.
+
+        Parameters
+        ----------
+        y : pd.Series
+            Single-output target series to inspect.
+
+        Returns
+        -------
+        bool
+            True if all of the following conditions are satisfied:
+
+            - ``self.task == "classification"``
+            - ``y`` has one of these dtypes:
+            - object
+            - category
+            - bool
+
+            Otherwise returns False.
+
+        Notes
+        -----
+        This helper does not perform the encoding itself. It only determines
+        whether encoding should be applied.
+
+        Numeric target labels such as 0, 1, 2 are treated as already usable for
+        sklearn classification workflows and therefore are not encoded again.
+
+        This method is intended only for single-output targets stored as a
+        pandas Series.
+        """
+        return (
+            self.task == "classification"
+            and (
+                pd.api.types.is_object_dtype(y)
+                or pd.api.types.is_categorical_dtype(y)
+                or pd.api.types.is_bool_dtype(y)
+            )
+        )
+
+    # -------------------- Helper: Check target variable dimension (Encoding/Multiple-output) --------------------
+    def _should_encode_multi_target_column(self, y_col: pd.Series) -> bool:
+        """
+        Return whether one multi-output target column should be label-encoded.
+
+        This helper is used in multi-output classification workflows where the
+        target data is stored as a pandas DataFrame. Each target column is checked
+        independently so that only label-like columns are encoded.
+
+        Parameters
+        ----------
+        y_col : pd.Series
+            One target column from a multi-output target DataFrame.
+
+        Returns
+        -------
+        bool
+            True if all of the following conditions are satisfied:
+
+            - ``self.task == "classification"``
+            - ``y_col`` has one of these dtypes:
+            - object
+            - category
+            - bool
+
+            Otherwise returns False.
+
+        Notes
+        -----
+        This helper allows mixed multi-output targets, for example when some target
+        columns are categorical labels and other columns are already numeric.
+
+        This method only decides whether encoding is needed. It does not perform
+        the encoding itself.
+        """
+        return (
+            self.task == "classification"
+            and (
+                pd.api.types.is_object_dtype(y_col)
+                or pd.api.types.is_categorical_dtype(y_col)
+                or pd.api.types.is_bool_dtype(y_col)
+            )
+        )
+
+    # -------------------- Helper: Encoding target variable --------------------
+    def _fit_target_label_encoder_if_needed(self):
+        """
+        Fit and apply target label encoding for classification targets when needed.
+
+        This helper initializes and applies target-side label encoding before
+        downstream workflows such as train/test split, model fitting, and
+        prediction.
+
+        Supported target formats are:
+
+        - single-output target stored as ``pd.Series``
+        - multi-output target stored as ``pd.DataFrame``
+
+        Encoding policy
+        ---------------
+        - Regression targets are never encoded.
+        - Single-output classification targets are encoded only when the target
+        dtype is object, category, or bool.
+        - Multi-output classification targets are processed column by column, and
+        only columns with object, category, or bool dtype are encoded.
+
+        Side Effects
+        ------------
+        Depending on the target structure, this method may update:
+
+        - ``self.cleaned_Y_data``
+        - ``self.target_encoder``
+        - ``self.target_encoders``
+        - ``self.target_classes_``
+        - ``self.multi_target_classes_``
+        - ``self.y_label_encoded``
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        For single-output classification, one shared ``LabelEncoder`` is stored in
+        ``self.target_encoder``.
+
+        For multi-output classification, one ``LabelEncoder`` is stored per encoded
+        column in ``self.target_encoders``.
+
+        Columns in a multi-output target DataFrame that are already numeric are left
+        unchanged.
+
+        This method is intended to be called during object initialization so that
+        all later workflows operate on the encoded target representation when
+        needed.
+        """
+        if self.task != "classification":
+            return
+
+        # ---------- Single-output ----------
+        if isinstance(self.cleaned_Y_data, pd.Series):
+            if not self._should_encode_single_target(self.cleaned_Y_data):
+                return
+
+            encoder = LabelEncoder()
+            encoded = encoder.fit_transform(self.cleaned_Y_data)
+
+            self.target_encoder = encoder
+            self.target_classes_ = list(encoder.classes_)
+            self.y_label_encoded = True
+            self.cleaned_Y_data = pd.Series(
+                encoded,
+                index=self.cleaned_Y_data.index,
+                name=self.original_y_name,
+            )
+            return
+
+        # ---------- Multi-output ----------
+        if isinstance(self.cleaned_Y_data, pd.DataFrame):
+            encoded_df = self.cleaned_Y_data.copy()
+
+            for col in encoded_df.columns:
+                y_col = encoded_df[col]
+
+                if self._should_encode_multi_target_column(y_col):
+                    encoder = LabelEncoder()
+                    encoded_df[col] = encoder.fit_transform(y_col)
+                    self.target_encoders[col] = encoder
+                    self.multi_target_classes_[col] = list(encoder.classes_)
+
+            if self.target_encoders:
+                self.y_label_encoded = True
+                self.cleaned_Y_data = encoded_df
+    
+    # -------------------- Decoding target variable Y --------------------
+    def decode_target_labels(self, preds):
+        """
+        Decode encoded classification predictions back to original target labels.
+
+        This helper reverses target-side label encoding after model prediction.
+        It supports both single-output and multi-output classification workflows.
+
+        Parameters
+        ----------
+        preds : Any
+            Prediction output returned by the fitted model pipeline.
+
+            Typical forms include:
+
+            - NumPy array
+            - pandas Series
+            - pandas DataFrame
+            - other sklearn-compatible prediction outputs
+
+        Returns
+        -------
+        Any
+            Decoded prediction output when target label encoding is active.
+
+            - For single-output classification, the returned object is typically a
+            one-dimensional array-like structure containing original class labels.
+            - For multi-output classification, the returned object is typically a
+            pandas DataFrame with decoded target columns.
+
+            If target encoding was not used, the original ``preds`` object is
+            returned unchanged.
+
+        Notes
+        -----
+        This helper is only meaningful for classification tasks.
+
+        In multi-output workflows, only the target columns that were actually
+        encoded are inverse-transformed. Columns that were not encoded remain
+        unchanged.
+
+        When multi-output predictions are provided as a non-DataFrame object, this
+        method reconstructs a pandas DataFrame using ``self.original_y_columns``
+        before applying column-wise inverse transformation.
+        """
+        if not self.y_label_encoded or self.task != "classification":
+            return preds
+
+        # ---------- Single-output ----------
+        if self.target_encoder is not None:
+            return self.target_encoder.inverse_transform(preds)
+
+        # ---------- Multi-output ----------
+        if self.target_encoders:
+            if isinstance(preds, pd.DataFrame):
+                decoded_df = preds.copy()
+            else:
+                decoded_df = pd.DataFrame(
+                    preds,
+                    columns=self.original_y_columns,
+                )
+
+            for col, encoder in self.target_encoders.items():
+                decoded_df[col] = encoder.inverse_transform(decoded_df[col])
+
+            return decoded_df
+
+        return preds
+
+    # -------------------- Helper: decoding for prediction (missioners) --------------------
+    def _maybe_decode_predictions(self, preds):
+        """
+        Decode prediction outputs when target label encoding is active.
+
+        This is a lightweight wrapper around ``decode_target_labels()`` intended for
+        mission-layer prediction helpers such as ``predict_engine()``.
+
+        Parameters
+        ----------
+        preds : Any
+            Raw prediction output returned by ``self.model_pipeline.predict(...)``.
+
+        Returns
+        -------
+        Any
+            Decoded prediction output when target-side label encoding was applied.
+            Otherwise returns the original prediction output unchanged.
+
+        Notes
+        -----
+        This helper allows mission-layer classes to remain simple and avoid
+        duplicating target decoding logic.
+
+        Typical usage is:
+
+        - generate predictions from the fitted pipeline
+        - pass predictions into ``self._maybe_decode_predictions(preds)``
+        - store preview / return final decoded predictions
+        """
+        return self.decode_target_labels(preds)
 
     # -------------------- Check tasks setting --------------------
     def _validate_task(self):
