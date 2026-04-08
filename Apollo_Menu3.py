@@ -242,6 +242,232 @@ def _get_tree_plot_index_range(apollo: ApolloEngine) -> tuple[int, int] | None:
 
     return None
 
+def _get_current_target_labels(apollo: ApolloEngine) -> list | None:
+    """
+    Return sorted unique target labels from the current Apollo model when available.
+
+    This helper inspects the current fitted model stored in ``ApolloEngine`` and
+    tries to extract the target labels currently associated with the model
+    workflow. It is primarily used to determine whether the active
+    classification target behaves like:
+
+    - numeric binary labels such as ``[0, 1]``,
+    - non-numeric binary labels such as ``["e", "p"]``,
+    - multiclass labels such as ``["A", "B", "C"]``.
+
+    The helper checks several commonly used target attributes in priority order
+    and returns the first valid set of unique labels it can resolve.
+
+    Parameters
+    ----------
+    apollo : ApolloEngine
+        Active Apollo engine instance containing the current fitted model.
+
+    Returns
+    -------
+    list or None
+        Sorted list of unique target labels when they can be resolved from the
+        current model target data.
+
+        Returns ``None`` if:
+
+        - no current model is available,
+        - no usable target attribute is found,
+        - the inspected target data is unsupported,
+        - label extraction fails during lookup.
+
+    Search Priority
+    ---------------
+    Target data is checked in the following order:
+
+    1. ``apollo.current_model.Y_test``
+    2. ``apollo.current_model.y_test``
+    3. ``apollo.current_model.Y_train``
+    4. ``apollo.current_model.y_train``
+
+    Supported Input Shapes
+    ----------------------
+    - One-dimensional target-like objects such as pandas ``Series`` or other
+      iterable single-target containers.
+    - Two-dimensional target tables with exactly one column, such as a
+      single-column pandas ``DataFrame``.
+
+    If a two-dimensional target object contains more than one column, this
+    helper treats it as unsupported for simple label-resolution purposes and
+    returns ``None``.
+
+    Notes
+    -----
+    This helper does not perform any label encoding or label conversion.
+    It only extracts and sorts the unique observed target labels.
+
+    Missing values are excluded when the inspected target object supports
+    ``dropna()``.
+
+    This helper is mainly used to support dynamic scoring-menu filtering in the
+    permutation-importance workflow.
+    """
+    if apollo.current_model is None:
+        return None
+
+    candidates = [
+        getattr(apollo.current_model, "Y_test", None),
+        getattr(apollo.current_model, "y_test", None),
+        getattr(apollo.current_model, "Y_train", None),
+        getattr(apollo.current_model, "y_train", None),
+    ]
+
+    for y in candidates:
+        if y is None:
+            continue
+
+        try:
+            # pandas DataFrame single-column case
+            if hasattr(y, "shape") and len(getattr(y, "shape", [])) == 2:
+                if y.shape[1] != 1:
+                    return None
+                y_series = y.iloc[:, 0]
+            else:
+                y_series = y
+
+            unique_labels = list(y_series.dropna().unique()) if hasattr(y_series, "dropna") else list(set(y_series))
+            unique_labels = sorted(unique_labels)
+            return unique_labels
+        except Exception:
+            continue
+
+    return None
+
+
+# -------------------- Helper: permutation scoring options --------------------
+def _get_permutation_scoring_options(apollo: ApolloEngine) -> dict:
+    """
+    Return the scoring-menu configuration for permutation importance.
+
+    This helper builds the scoring menu used by the permutation-importance
+    workflow according to the current model task and, for classification
+    models, the structure of the currently available target labels.
+
+    Behavior
+    --------
+    - If no current model is available, the helper returns an empty scoring
+      configuration.
+    - If the current model task is ``"regression"``, the helper returns the
+      configured regression scoring menu from ``SCORING_CONFIG["regressor"]``.
+    - If the current model task is not ``"classification"`` or ``"regression"``,
+      the helper returns an empty scoring configuration.
+    - If the current model task is ``"classification"``, the helper inspects
+      the current target labels and chooses either the full classifier scoring
+      menu or a reduced safer scoring menu.
+
+    Classification Logic
+    --------------------
+    For classification workflows, target labels are resolved through
+    ``_get_current_target_labels(apollo)``.
+
+    The helper then applies the following rules:
+
+    - If label resolution fails, use a safer reduced classification menu.
+    - If the labels are exactly numeric binary labels ``{0, 1}``, return the
+      full classifier scoring menu from ``SCORING_CONFIG["classifier"]``.
+    - If the labels are binary but not numeric ``0/1`` labels, return the
+      safer reduced classification menu.
+    - If the labels are multiclass, return the safer reduced classification
+      menu.
+
+    The safer reduced classification menu includes:
+
+    - ``accuracy``
+    - ``f1_weighted``
+    - ``precision_weighted``
+    - ``recall_weighted``
+
+    This avoids presenting binary-style scoring options that may fail when the
+    active target labels do not match the default positive-label assumptions
+    used by some scorers.
+
+    Parameters
+    ----------
+    apollo : ApolloEngine
+        Active Apollo engine instance containing the current fitted model.
+
+    Returns
+    -------
+    dict
+        Scoring-menu configuration dictionary with the standard structure:
+
+        - ``"label"``: menu title string
+        - ``"options"``: numeric-option mapping
+        - ``"default"``: default menu key
+
+        The returned dictionary may contain an empty ``"options"`` mapping when
+        no valid scoring menu can be constructed.
+
+    Notes
+    -----
+    This helper does not run permutation importance itself.
+    It only prepares the scoring options shown to the user before the
+    permutation-importance workflow is executed.
+
+    This helper is intentionally local to the evaluation workflow so that the
+    dynamic scoring-menu behavior only affects permutation importance and does
+    not automatically change other training or evaluation menus.
+    """
+    if apollo.current_model is None:
+        return {
+            "label": "🎯 Scoring",
+            "options": {},
+            "default": None,
+        }
+
+    task_type = getattr(apollo.current_model, "task", None)
+
+    if task_type == "regression":
+        return SCORING_CONFIG["regressor"]
+
+    if task_type != "classification":
+        return {
+            "label": "🎯 Scoring",
+            "options": {},
+            "default": None,
+        }
+
+    labels = _get_current_target_labels(apollo)
+
+    # fallback: if label info unavailable, use safer classification options
+    safe_classifier_options = {
+        1: "accuracy",
+        2: "f1_weighted",
+        3: "precision_weighted",
+        4: "recall_weighted",
+    }
+
+    if not labels:
+        return {
+            "label": "🎯 Scoring",
+            "options": safe_classifier_options,
+            "default": 2,
+        }
+
+    # numeric binary labels like 0/1 -> allow binary f1
+    if len(labels) == 2 and set(labels) == {0, 1}:
+        return SCORING_CONFIG["classifier"]
+
+    # string binary labels like ['e', 'p'] -> use safer weighted options only
+    if len(labels) == 2:
+        return {
+            "label": "🎯 Scoring",
+            "options": safe_classifier_options,
+            "default": 2,
+        }
+
+    # multiclass -> also use safer weighted options only
+    return {
+        "label": "🎯 Scoring",
+        "options": safe_classifier_options,
+        "default": 2,
+    }
+
 
 # -------------------- Show evaluation result menu --------------------
 @menu_wrapper("Show Evaluation Result")
@@ -411,20 +637,33 @@ def permutation_importance_menu(apollo: ApolloEngine):
 
     This menu validates that a current model exists and supports the
     ``permutation_importance_engine(...)`` workflow. It then interactively
-    collects permutation-importance options from the user, including:
+    collects the required permutation-importance options from the user and
+    executes the workflow through the current model.
 
-    1. the number of permutation repeats,
-    2. the maximum number of displayed features,
-    3. the scoring metric used to measure performance drop,
+    The collected options include:
+
+    1. permutation repeat count,
+    2. maximum displayed feature count,
+    3. scoring metric,
     4. whether the generated figure should be saved.
 
-    The scoring menu is selected dynamically according to the current model task:
+    Scoring Selection
+    -----------------
+    The scoring menu is selected dynamically according to the current model
+    task and, for classification workflows, the current target-label structure.
 
-    - ``"classification"`` -> classifier scoring menu
-    - ``"regression"`` -> regressor scoring menu
+    Scoring behavior follows these rules:
 
-    After collecting the required options, the menu runs the underlying
-    permutation-importance workflow and displays the returned result.
+    - regression models use the configured regression scoring menu,
+    - classification models with numeric binary labels such as ``0/1`` may use
+      the full classifier scoring menu,
+    - classification models with non-numeric binary labels or multiclass
+      targets use a safer reduced scoring menu consisting of weighted scoring
+      options and accuracy.
+
+    This dynamic behavior is intended to avoid presenting scoring choices that
+    may fail because of binary positive-label assumptions that do not match the
+    current target labels.
 
     Parameters
     ----------
@@ -438,16 +677,22 @@ def permutation_importance_menu(apollo: ApolloEngine):
     Notes
     -----
     - This menu requires that ``apollo.current_model`` already exists.
-    - The current model must expose a ``permutation_importance_engine(...)``
-    method.
-    - The scoring-menu type is resolved from ``apollo.current_model.task``.
+    - The current model must expose a
+      ``permutation_importance_engine(...)`` method.
+    - Only models whose task is ``"classification"`` or ``"regression"``
+      are supported by this menu.
     - If the task type is unsupported, the menu prints a warning and exits.
-    - If the user cancels any required option-selection step, the menu exits
-    without running permutation importance.
+    - If the scoring helper cannot construct a valid scoring menu, the menu
+      prints a warning and exits.
+    - If the user cancels any required selection step, the menu exits without
+      running permutation importance.
+    - If the current classification target labels are not numeric binary
+      ``0/1`` labels, the menu may print a note explaining that safer weighted
+      scoring options are being shown.
     - If the returned result object supports ``head(...)``, the menu displays
-    the top portion of the result for readability.
+      the top portion of the result for readability.
     - If permutation importance fails inside the model layer, the raised
-    exception is caught, a warning is printed, and the menu returns normally.
+      exception is caught, a warning is printed, and the menu returns normally.
 
     Examples
     --------
@@ -455,11 +700,12 @@ def permutation_importance_menu(apollo: ApolloEngine):
 
         repeats      -> 2   # option mapped to 10
         max display  -> 2   # option mapped to 20
-        scoring      -> 3   # e.g. "f1_weighted" or task-specific option
+        scoring      -> 2   # e.g. "f1_weighted" in a safer classification menu
         save plot    -> n
 
     This runs permutation importance using the selected repeat count,
-    display limit, scoring metric, and save option.
+    display limit, scoring metric, and save option, then prints the returned
+    importance result.
     """
     logger.info("Entered menu: Permutation Importance")
 
@@ -473,13 +719,9 @@ def permutation_importance_menu(apollo: ApolloEngine):
         print("⚠️ Permutation importance is not supported by the current model ‼️")
         return
 
-    # ---------- Resolve task type for scoring menu ----------
+    # ---------- Validate task type ----------
     task_type = getattr(apollo.current_model, "task", None)
-    if task_type == "classification":
-        scoring_task_type = "classifier"
-    elif task_type == "regression":
-        scoring_task_type = "regressor"
-    else:
+    if task_type not in ("classification", "regression"):
         logger.warning("Permutation Importance failed: unknown task type %s", task_type)
         print("⚠️ Unknown model task type for permutation importance scoring ‼️")
         return
@@ -507,7 +749,22 @@ def permutation_importance_menu(apollo: ApolloEngine):
         return
     
     # ---------- Select scoring ----------
-    scoring_config = SCORING_CONFIG[scoring_task_type]
+    scoring_config = _get_permutation_scoring_options(apollo)
+
+    if not scoring_config["options"]:
+        logger.warning("Permutation Importance failed: no valid scoring options available")
+        print("⚠️ No valid scoring options available for the current target type ‼️")
+        return
+
+    # Optional note for safer classification scoring menu
+    if getattr(apollo.current_model, "task", None) == "classification":
+        labels = _get_current_target_labels(apollo)
+        if labels is not None and not (len(labels) == 2 and set(labels) == {0, 1}):
+            print(
+                "🔔 Note: binary scoring like f1 may require numeric binary labels (0/1). "
+                "Safer weighted scoring options are shown for the current target labels."
+            )
+
     selected_num, scoring = select_from_options(
         label=scoring_config["label"],
         options=scoring_config["options"],

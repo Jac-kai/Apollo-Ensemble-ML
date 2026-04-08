@@ -477,6 +477,32 @@ def load_trained_model_menu(apollo: ApolloEngine):
       showing a warning.
     - Invalid model or file selections are rejected without changing the
       current Apollo model state.
+    - Model-file discovery is performed from the filesystem using the model
+      family selected by the user.
+    - After successful loading, the loaded model becomes the current active
+      Apollo model and is available to downstream evaluation and prediction
+      workflows.
+
+    Workflow
+    --------
+    1. Retrieve all registered Apollo model names.
+    2. Display the model-family menu.
+    3. Read one model-family selection from the user.
+    4. Resolve the save directory for the selected model family.
+    5. List available saved model files.
+    6. Read one saved-model file selection from the user.
+    7. Dispatch model loading through ``ApolloEngine.load_trained_model(...)``.
+
+    Examples
+    --------
+    A typical workflow may look like::
+
+        1. AdaBoostClassifier
+        2. BaggingClassifier
+        3. VotingClassifier
+
+    After selecting a model family and one saved file, the chosen trained model
+    is loaded into the active Apollo session.
     """
     logger.info("Entered menu: Load Trained Model")
 
@@ -591,8 +617,32 @@ def predict_with_current_model_menu(apollo: ApolloEngine):
     -----
     - Prediction uses the current source dataset stored in the Apollo engine.
     - The source dataset must be a ``pandas.DataFrame``.
+    - If the active model exposes stored feature names, the menu displays them
+      before prediction so the user can verify column compatibility.
     - A short preview of prediction results is displayed after successful
       prediction.
+    - If the user declines confirmation, the menu exits without running
+      prediction.
+
+    Workflow
+    --------
+    1. Validate that a current trained model exists.
+    2. Validate that ``FeatureCore`` has been built.
+    3. Validate that current source data exists and is a ``pandas.DataFrame``.
+    4. Optionally display the trained feature names required by the model.
+    5. Ask the user whether prediction should continue.
+    6. Run prediction through
+       ``ApolloEngine.predict_with_current_model(new_data)``.
+    7. Display a short preview of the prediction results.
+
+    Examples
+    --------
+    A successful workflow may:
+
+    - display required feature columns such as ``["odor", "cap-shape"]``,
+    - ask the user to confirm prediction,
+    - print the first several predicted values,
+    - report the total prediction count.
     """
     logger.info("Entered menu: Predict with Current Model")
 
@@ -683,8 +733,39 @@ def model_management_menu(apollo: ApolloEngine):
     Notes
     -----
     The same Apollo engine instance is reused across all menu actions so that
-    current model state, training results, and loaded resources persist within
-    the active session.
+    current model state, training results, loaded models, and runtime resources
+    persist within the active session.
+
+    Menu Actions
+    ------------
+    The dispatcher currently provides access to:
+
+    - classifier ensemble training,
+    - regressor ensemble training,
+    - current model summary display,
+    - current trained model saving,
+    - previously saved trained model loading,
+    - prediction with the current active model.
+
+    If a selected submenu fails internally, that submenu exits safely and
+    control returns to the model-management menu loop.
+
+    Workflow
+    --------
+    1. Display the model-management menu.
+    2. Read one numeric user selection.
+    3. Dispatch to the matched submenu function.
+    4. Return to the menu loop until the user chooses back/cancel.
+
+    Examples
+    --------
+    A typical session may:
+
+    - train a classifier ensemble,
+    - inspect the current model summary,
+    - save the trained model,
+    - later reload that model,
+    - run prediction on the current dataset.
     """
     logger.info("Entered menu: Apollo Model Management Menu")
 

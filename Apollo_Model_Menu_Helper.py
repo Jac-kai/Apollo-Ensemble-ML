@@ -110,12 +110,12 @@ def select_from_options(
     default: int | None = None,
 ):
     """
-    Display a numbered option menu and return the selected option value.
+    Display a numbered option menu and return both the selected key and value.
 
     This helper is the shared menu-selection utility used throughout Apollo's
     menu workflows. It prints a menu title, displays all numeric options, reads
-    one numeric input from the user, validates the input, and returns the
-    mapped option value instead of the numeric key itself.
+    one numeric input from the user, validates the input, and returns both the
+    selected numeric key and its mapped option value.
 
     Parameters
     ----------
@@ -145,13 +145,16 @@ def select_from_options(
 
     Returns
     -------
-    object or None
-        The value mapped to the selected numeric option.
+    tuple[int | None, object | None]
+        A tuple ``(selected_num, selected_value)``.
 
-        Returns ``None`` if:
+        Returns:
 
-        - the user cancels the selection,
-        - the selected numeric key is not found in ``options``.
+        - ``(selected_num, options[selected_num])`` when the user makes a valid
+          selection,
+        - ``(None, None)`` if the user cancels the selection,
+        - ``(None, None)`` if the selected numeric key is not found in
+          ``options``.
 
     Notes
     -----
@@ -170,7 +173,7 @@ def select_from_options(
     2. Print all numeric option pairs.
     3. Read one numeric selection.
     4. Validate that the selected key exists.
-    5. Return ``options[selected_num]``.
+    5. Return ``(selected_num, options[selected_num])``.
 
     Examples
     --------
@@ -180,7 +183,11 @@ def select_from_options(
 
     and the user selects ``2``, the returned value is::
 
-        "hard"
+        (2, "hard")
+
+    If the user cancels the input, the returned value is::
+
+        (None, None)
     """
     # ---------- List the parameters ----------
     print(f"\n----- {label} -----")
@@ -251,35 +258,86 @@ def collect_common_training_params(task_type: str) -> dict | None:
     """
     Collect common training parameters for an Apollo model workflow.
 
-    This helper interactively gathers shared training parameters such as
-    test-split size, random states, cross-validation usage, preprocessing
-    usage, and scoring method.
+    This helper interactively gathers shared training parameters used across
+    Apollo model-training workflows, including train/test split settings,
+    random-state settings, cross-validation usage, preprocessing usage, and
+    the scoring method.
 
     Parameters
     ----------
     task_type : str
-        Task type used to determine the scoring menu configuration, typically
-        ``"classifier"`` or ``"regressor"``.
+        Task type used to determine which scoring menu should be shown.
+
+        Typical values include:
+
+        - ``"classifier"``
+        - ``"regressor"``
 
     Returns
     -------
     dict or None
-        Dictionary containing collected common training parameters when all
-        required selections are completed successfully.
-        Returns ``None`` if the user cancels at any step.
+        Dictionary containing the collected common training parameters when all
+        required menu selections are completed successfully.
+
+        The returned dictionary contains:
+
+        - ``test_size``
+        - ``split_random_state``
+        - ``model_random_state``
+        - ``use_cv``
+        - ``use_preprocess``
+        - ``cv_folds``
+        - ``scoring``
+
+        Returns ``None`` if the user cancels during any required selection
+        step.
 
     Notes
     -----
-    The returned dictionary includes:
-    - ``test_size``
-    - ``split_random_state``
-    - ``model_random_state``
-    - ``use_cv``
-    - ``use_preprocess``
-    - ``cv_folds``
-    - ``scoring``
+    This helper is shared by both classifier and regressor training menus.
+
+    The scoring menu is selected from ``SCORING_CONFIG`` according to the
+    supplied ``task_type``.
 
     When cross-validation is disabled, ``cv_folds`` is stored as ``None``.
+
+    Workflow
+    --------
+    1. Collect shared training parameters from ``COMMON_PARAM_CONFIG``:
+       - test size
+       - split random state
+       - model random state
+       - cross-validation usage
+       - outer preprocessing usage
+    2. If cross-validation is enabled, collect the CV fold count.
+    3. Collect the scoring method from the task-specific scoring menu.
+    4. Return the final common-parameter dictionary.
+
+    Examples
+    --------
+    A classifier workflow may return something like::
+
+        {
+            "test_size": 0.2,
+            "split_random_state": 42,
+            "model_random_state": 42,
+            "use_cv": True,
+            "use_preprocess": True,
+            "cv_folds": 5,
+            "scoring": "f1_weighted",
+        }
+
+    A regressor workflow may return something like::
+
+        {
+            "test_size": 0.25,
+            "split_random_state": 7,
+            "model_random_state": 7,
+            "use_cv": False,
+            "use_preprocess": True,
+            "cv_folds": None,
+            "scoring": "r2",
+        }
     """
     params = {}
 
