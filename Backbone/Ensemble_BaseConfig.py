@@ -963,6 +963,7 @@ class EnsembleBaseModelConfig(ABC):
         base_model : Any
             Final estimator placed at the end of the outer Pipeline.
             This may be:
+
             - a plain sklearn estimator
             - an ensemble estimator
             - a Pipeline-wrapped estimator
@@ -974,8 +975,13 @@ class EnsembleBaseModelConfig(ABC):
             Examples
             --------
             Outer-pipeline ensemble params:
+
             - ``{"classifier__n_estimators": [50, 100]}``
             - ``{"regressor__final_estimator__alpha": [0.1, 1.0]}``
+
+            If ``None`` or empty, cross-validation can still run, but no explicit
+            hyperparameter combinations are searched beyond the estimator's current
+            configuration.
 
         use_cv : bool
             Whether to perform GridSearchCV.
@@ -1075,11 +1081,27 @@ class EnsembleBaseModelConfig(ABC):
         CV splitter policy is delegated to ``_build_cv_and_scoring(...)``.
 
         Typical behavior:
+
         - classification + single-output -> ``StratifiedKFold``
         - otherwise -> ``KFold``
 
         If CV is used, the method also calls ``save_cv_search_report()`` to export
         the compact top-ranked CV result summary to CSV.
+
+        Compact CV reporting policy:
+
+        - The compact report is generated from the top-ranked rows of
+        ``GridSearchCV.cv_results_``.
+        - Base report fields include:
+        ``rank_test_score``, ``mean_test_score``, ``std_test_score``, and
+        ``params``.
+        - If the current CV run does not use a real parameter grid, additional
+        fields may be added to the compact report, including:
+        ``param_grid_used`` and ``fixed_params``.
+        - ``fixed_params`` records the effective fixed training settings used for
+        the current CV run, such as step name, scoring, fold count, random seed,
+        preprocessing usage, categorical encoder selection, extra step names, and
+        the estimator representation.
 
         This method stores two levels of CV result tracking:
 
@@ -1150,14 +1172,30 @@ class EnsembleBaseModelConfig(ABC):
 
             # ---------- Build compact CV report ----------
             cv_results_df = pd.DataFrame(gs.cv_results_)
-            top_cv_results = (
-                cv_results_df[
-                    ["rank_test_score", "mean_test_score", "std_test_score", "params"]
-                ]
-                .sort_values("rank_test_score")
-                .head(5)
-                .to_dict(orient="records")
-            )
+
+            top_cv_df = cv_results_df[
+                ["rank_test_score", "mean_test_score", "std_test_score", "params"]
+            ].sort_values("rank_test_score").head(5).copy()
+
+            # If this CV run did not use a real param grid, record fixed training settings
+            if not param_grid:
+                fixed_params = {
+                    "step_name": self.step_name,
+                    "scoring": scoring,
+                    "cv_folds": cv_folds,
+                    "random_state": random_state,
+                    "use_preprocess": use_preprocess,
+                    "cat_encoder": cat_encoder,
+                    "extra_steps": [name for name, _ in (extra_steps or [])],
+                    "base_model": repr(base_model),
+                }
+
+                top_cv_df["param_grid_used"] = False
+                top_cv_df["fixed_params"] = [fixed_params] * len(top_cv_df)
+            else:
+                top_cv_df["param_grid_used"] = True
+
+            top_cv_results = top_cv_df.to_dict(orient="records")
 
             self.cv_search_report = {
                 "use_cv": use_cv,
@@ -1218,12 +1256,21 @@ class EnsembleBaseModelConfig(ABC):
 
         Notes
         -----
-        The saved CSV contains the top-ranked CV result rows with these fields:
+        The saved CSV contains the top-ranked CV result rows with these base fields:
 
         - ``rank_test_score``
         - ``mean_test_score``
         - ``std_test_score``
         - ``params``
+
+        Additional fields may also be included depending on the CV configuration,
+        such as:
+
+        - ``param_grid_used``
+        - ``fixed_params``
+
+        When CV is run without a real parameter grid, ``fixed_params`` records the
+        effective fixed training settings used for that CV run.
 
         The default filename format is:
 
@@ -1232,9 +1279,9 @@ class EnsembleBaseModelConfig(ABC):
         where ``model_name`` comes from ``self.input_model_type``. If that value is
         unavailable, the current class name is used as fallback.
 
-        This method exports the compact summary report only. The full raw GridSearchCV
-        result dictionary remains available separately in ``self.cv_results_raw`` when
-        CV was used.
+        This method exports the compact summary report only. The full raw
+        ``GridSearchCV.cv_results_`` dictionary remains available separately in
+        ``self.cv_results_raw`` when CV was used.
         """
         if not self.cv_search_report:
             print("⚠️ No CV search report available to save ‼️")
