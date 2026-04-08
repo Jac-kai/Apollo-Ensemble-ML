@@ -253,15 +253,233 @@ def get_model_task_type(apollo: ApolloEngine, model_name: str) -> str | None:
     return info.get("task_type") if info else None
 
 
+# -------------------- Helper: get training target labels --------------------
+def _get_training_target_labels(apollo: ApolloEngine) -> list | None:
+    """
+    Return sorted unique target labels from the current Apollo feature workflow.
+
+    This helper inspects the target data currently stored in
+    ``apollo.feature_core.y`` and attempts to extract the unique observed target
+    labels for use in training-menu logic.
+
+    It is primarily used to determine whether the current classification target
+    behaves like:
+
+    - numeric binary labels such as ``[0, 1]``,
+    - non-numeric binary labels such as ``["e", "p"]``,
+    - multiclass labels such as ``["A", "B", "C"]``.
+
+    Parameters
+    ----------
+    apollo : ApolloEngine
+        Active Apollo engine instance containing the current feature workflow.
+
+    Returns
+    -------
+    list or None
+        Sorted list of unique target labels when label extraction succeeds.
+
+        Returns ``None`` if:
+
+        - ``apollo`` is unavailable,
+        - ``feature_core`` is unavailable,
+        - target data ``y`` is unavailable,
+        - the target structure is unsupported,
+        - label extraction fails.
+
+    Supported Input Shapes
+    ----------------------
+    - One-dimensional target-like objects such as pandas ``Series`` or other
+      iterable single-target containers.
+    - Two-dimensional target tables with exactly one column, such as a
+      single-column pandas ``DataFrame``.
+
+    If a two-dimensional target object contains more than one column, this
+    helper treats it as unsupported for simple label-resolution purposes and
+    returns ``None``.
+
+    Notes
+    -----
+    This helper does not perform label encoding or label conversion.
+    It only extracts and sorts the currently observed target labels.
+
+    Missing values are excluded when the inspected target object supports
+    ``dropna()``.
+
+    This helper is mainly used to support dynamic scoring-menu filtering for
+    classifier training workflows.
+    """
+    if apollo is None or getattr(apollo, "feature_core", None) is None:
+        return None
+
+    y = getattr(apollo.feature_core, "y", None)
+    if y is None:
+        return None
+
+    try:
+        if hasattr(y, "shape") and len(getattr(y, "shape", [])) == 2:
+            if y.shape[1] != 1:
+                return None
+            y_series = y.iloc[:, 0]
+        else:
+            y_series = y
+
+        unique_labels = (
+            list(y_series.dropna().unique())
+            if hasattr(y_series, "dropna")
+            else list(set(y_series))
+        )
+        return sorted(unique_labels)
+    except Exception:
+        return None
+    
+
+# -------------------- Helper: training scoring options --------------------
+def _get_training_scoring_config(
+    task_type: str,
+    apollo: ApolloEngine | None = None,
+) -> dict:
+    """
+    Return the training scoring-menu configuration for the current workflow.
+
+    This helper builds the scoring menu used by Apollo training workflows
+    according to the requested task type and, for classifier workflows, the
+    structure of the currently selected target labels.
+
+    Behavior
+    --------
+    - If ``task_type == "regressor"``, the helper returns the configured
+      regression scoring menu from ``SCORING_CONFIG["regressor"]``.
+    - If ``task_type`` is not ``"classifier"`` or ``"regressor"``, the helper
+      returns an empty scoring configuration.
+    - If ``task_type == "classifier"``, the helper inspects the current target
+      labels and chooses either the full classifier scoring menu or a safer
+      reduced classifier scoring menu.
+
+    Classification Logic
+    --------------------
+    For classifier workflows, target labels are resolved through
+    ``_get_training_target_labels(apollo)``.
+
+    The helper then applies the following rules:
+
+    - If label resolution fails, use the safer reduced classifier menu.
+    - If the labels are exactly numeric binary labels ``{0, 1}``, return the
+      full classifier scoring menu from ``SCORING_CONFIG["classifier"]``.
+    - If the labels are binary but not numeric ``0/1`` labels, return the
+      safer reduced classifier menu.
+    - If the labels are multiclass, return the safer reduced classifier menu.
+
+    The safer reduced classifier menu includes:
+
+    - ``accuracy``
+    - ``f1_weighted``
+    - ``precision_weighted``
+    - ``recall_weighted``
+
+    This avoids presenting binary-style scoring options that may fail during
+    CV-based model selection when the current target labels do not match the
+    default positive-label assumptions used by some scorers.
+
+    Parameters
+    ----------
+    task_type : str
+        Training task type.
+
+        Typical values include:
+
+        - ``"classifier"``
+        - ``"regressor"``
+    apollo : ApolloEngine or None, optional
+        Active Apollo engine instance used to inspect current target labels for
+        classifier workflows.
+
+    Returns
+    -------
+    dict
+        Scoring-menu configuration dictionary with the standard structure:
+
+        - ``"label"``: menu title string
+        - ``"options"``: numeric-option mapping
+        - ``"default"``: default menu key
+
+        The returned dictionary may contain an empty ``"options"`` mapping when
+        no valid scoring menu can be constructed.
+
+    Notes
+    -----
+    This helper does not train a model and does not run cross-validation.
+    Its responsibility is limited to preparing the scoring options shown in the
+    training menu before model fitting begins.
+
+    This helper is used only for training scoring selection and is separate
+    from the permutation-importance scoring helper used in the evaluation
+    workflow.
+    """
+    if task_type == "regressor":
+        return SCORING_CONFIG["regressor"]
+
+    if task_type != "classifier":
+        return {
+            "label": "🎯 Scoring",
+            "options": {},
+            "default": None,
+        }
+
+    safe_classifier_options = {
+        1: "accuracy",
+        2: "f1_weighted",
+        3: "precision_weighted",
+        4: "recall_weighted",
+    }
+
+    labels = _get_training_target_labels(apollo)
+
+    if not labels:
+        return {
+            "label": "🎯 Scoring",
+            "options": safe_classifier_options,
+            "default": 2,
+        }
+
+    if len(labels) == 2 and set(labels) == {0, 1}:
+        return SCORING_CONFIG["classifier"]
+
+    if len(labels) == 2:
+        return {
+            "label": "🎯 Scoring",
+            "options": safe_classifier_options,
+            "default": 2,
+        }
+
+    return {
+        "label": "🎯 Scoring",
+        "options": safe_classifier_options,
+        "default": 2,
+    }
+
+
 # -------------------- Helper: collect common training params --------------------
-def collect_common_training_params(task_type: str) -> dict | None:
+def collect_common_training_params(
+    task_type: str,
+    apollo: ApolloEngine | None = None,
+) -> dict | None:
     """
     Collect common training parameters for an Apollo model workflow.
 
     This helper interactively gathers shared training parameters used across
-    Apollo model-training workflows, including train/test split settings,
-    random-state settings, cross-validation usage, preprocessing usage, and
-    the scoring method.
+    Apollo model-training workflows, including:
+
+    - train/test split settings,
+    - random-state settings,
+    - cross-validation usage,
+    - preprocessing usage,
+    - scoring method selection.
+
+    For classifier workflows, the scoring menu is selected dynamically
+    according to the current target-label structure so that binary-style
+    scoring options that may be incompatible with non-numeric class labels are
+    not shown unnecessarily.
 
     Parameters
     ----------
@@ -272,6 +490,9 @@ def collect_common_training_params(task_type: str) -> dict | None:
 
         - ``"classifier"``
         - ``"regressor"``
+    apollo : ApolloEngine or None, optional
+        Active Apollo engine instance used to inspect the current feature/target
+        workflow when dynamic classifier scoring selection is needed.
 
     Returns
     -------
@@ -290,14 +511,20 @@ def collect_common_training_params(task_type: str) -> dict | None:
         - ``scoring``
 
         Returns ``None`` if the user cancels during any required selection
-        step.
+        step or if no valid scoring options are available.
 
     Notes
     -----
     This helper is shared by both classifier and regressor training menus.
 
-    The scoring menu is selected from ``SCORING_CONFIG`` according to the
-    supplied ``task_type``.
+    Scoring Selection
+    -----------------
+    - Regressor workflows use the configured regression scoring menu directly.
+    - Classifier workflows use a dynamic scoring menu based on the current
+      target-label structure.
+    - When the current classifier target labels are not numeric binary
+      ``0/1`` labels, the helper may show a note and restrict the available
+      scoring options to safer weighted metrics plus accuracy.
 
     When cross-validation is disabled, ``cv_folds`` is stored as ``None``.
 
@@ -310,8 +537,9 @@ def collect_common_training_params(task_type: str) -> dict | None:
        - cross-validation usage
        - outer preprocessing usage
     2. If cross-validation is enabled, collect the CV fold count.
-    3. Collect the scoring method from the task-specific scoring menu.
-    4. Return the final common-parameter dictionary.
+    3. Build the task-appropriate scoring menu.
+    4. Collect the scoring method from that menu.
+    5. Return the final common-parameter dictionary.
 
     Examples
     --------
@@ -374,7 +602,23 @@ def collect_common_training_params(task_type: str) -> dict | None:
         params["cv_folds"] = None
 
     # ---------- Get scoring method ----------
-    scoring_config = SCORING_CONFIG[task_type]
+    scoring_config = _get_training_scoring_config(
+        task_type=task_type,
+        apollo=apollo,
+    )
+
+    if not scoring_config["options"]:
+        print("⚠️ No valid scoring options available ‼️")
+        return None
+
+    if task_type == "classifier":
+        labels = _get_training_target_labels(apollo)
+        if labels is not None and not (len(labels) == 2 and set(labels) == {0, 1}):
+            print(
+                "🔔 Note: binary scoring like f1 may require numeric binary labels (0/1). "
+                "Safer weighted scoring options are shown for the current target labels."
+            )
+
     selected_num, scoring_value = select_from_options(
         label=scoring_config["label"],
         options=scoring_config["options"],

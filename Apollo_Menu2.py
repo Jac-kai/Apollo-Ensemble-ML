@@ -168,7 +168,10 @@ def train_classifier_menu(apollo: ApolloEngine):
     logger.info("Classifier ensemble selected: %s", model_name)
 
     # ---------- Collect common params ----------
-    common_params = collect_common_training_params(task_type="classifier")
+    common_params = collect_common_training_params(
+        task_type="classifier",
+        apollo=apollo,
+    )
     if common_params is None:
         logger.info("Train Classifier cancelled at common parameter selection")
         return
@@ -301,7 +304,10 @@ def train_regressor_menu(apollo: ApolloEngine):
     logger.info("Regressor ensemble selected: %s", model_name)
 
     # ---------- Collect common params ----------
-    common_params = collect_common_training_params(task_type="regressor")
+    common_params = collect_common_training_params(
+        task_type="regressor",
+        apollo=apollo,
+    )
     if common_params is None:
         logger.info("Train Regressor cancelled at common parameter selection")
         return
